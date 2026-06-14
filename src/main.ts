@@ -298,7 +298,8 @@ function draw(): void {
   for (let px = 0; px <= plotW; px++) {
     const logH = logMin + (px / plotW) * (logMax - logMin);
     const hv = 2 ** logH;
-    const yv = hintsNew(Math.max(1, hv));
+    const safeHv = Math.max(1, hv);
+    const yv = C * safeHv * Math.log2(safeHv);
     const x = padL + px;
     const y = yPix(yv);
     if (first) {
