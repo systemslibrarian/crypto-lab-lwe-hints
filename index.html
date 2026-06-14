@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en-US" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Anti-flash: set theme BEFORE any stylesheet so there is no light->dark flash. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (t !== 'light' && t !== 'dark') t = 'dark'; // dark default, no prefers-color-scheme
+          document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Educational estimator: how many side-channel hints recover a sparse-ternary LWE secret, under the O(h log h) law of ePrint 2026/1081. Computes real arithmetic — runs no attack."
+    />
+    <title>LWE Hints — How Cheaply Do Sparse Secrets Leak?</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <span class="kicker">crypto-lab</span>
+        <h1 class="site-title">LWE Hints</h1>
+        <p class="site-sub">How cheaply does a sparse LWE secret leak?</p>
+      </div>
+      <button
+        id="theme-toggle"
+        class="theme-toggle"
+        type="button"
+        aria-label="Switch to light theme"
+        title="Toggle theme"
+      >
+        🌙
+      </button>
+    </header>
+
+    <main>
+      <!-- 1. TL;DR -->
+      <section class="card tldr" id="tldr">
+        <h2>TL;DR</h2>
+        <p>
+          Sparse LWE secrets leak <em>cheaply</em>. Older attacks needed about
+          <strong>n/2</strong> side-channel hints; this paper shows you need only
+          about <strong>h·log₂h</strong>. For an FHE bootstrapping regime
+          <code>(n = 2¹⁵, h = 32)</code> that is
+          <strong>320 hints instead of 16,384</strong> — a
+          <strong>~50× drop</strong>.
+        </p>
+        <ul class="tldr-points">
+          <li><strong>Who's exposed:</strong> sparse-secret FHE / bootstrapping deployments with a side-channel leakage path.</li>
+          <li><strong>Safer pattern:</strong> raise the Hamming weight h, mask / rate-limit leakage, and treat hint-availability as part of the threat model.</li>
+          <li><strong>What this is:</strong> an estimator of <em>hint counts</em> — it runs <em>no attack</em>, no lattice reduction, no randomness.</li>
+        </ul>
+      </section>
+
+      <!-- 2. Live readout -->
+      <section class="card" id="readout-card">
+        <h2>Live readout</h2>
+        <div class="readout" id="readout" aria-live="polite">
+          <div class="stat">
+            <span class="stat-label">Dimension n</span>
+            <span class="stat-value" id="ro-n">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Hamming weight h</span>
+            <span class="stat-value" id="ro-h">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Hints — this method <span class="badge badge-heuristic" title="Heuristic estimate from C·h·log₂h, GAA-based">heuristic · GAA</span></span>
+            <span class="stat-value" id="ro-new">—</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Hints — prior work <span class="badge badge-heuristic" title="O(n) baseline, n/2">baseline</span></span>
+            <span class="stat-value" id="ro-prior">—</span>
+          </div>
+          <div class="stat stat-wide">
+            <span class="stat-label">Reduction factor</span>
+            <span class="stat-value big" id="ro-ratio">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Interactive chart -->
+      <section class="card" id="chart-card">
+        <h2>Interactive chart</h2>
+        <p class="muted">
+          Hints needed vs Hamming weight <code>h</code> (log-scaled x-axis). Every
+          modeled point is
+          <span class="badge badge-heuristic">heuristic · GAA-based</span>.
+        </p>
+
+        <div class="controls">
+          <label class="slider-row">
+            <span>Hamming weight h: <output id="h-out">32</output></span>
+            <input type="range" id="h-slider" min="1" max="256" step="1" value="32" />
+          </label>
+          <label class="slider-row">
+            <span>Dimension n = 2^<output id="n-exp-out">15</output> (<output id="n-out">32768</output>)</span>
+            <input type="range" id="n-slider" min="8" max="18" step="1" value="15" />
+          </label>
+        </div>
+
+        <div class="presets" id="presets" role="group" aria-label="Paper / model parameter regimes">
+          <!-- preset buttons injected by main.ts -->
+        </div>
+
+        <figure class="chart-wrap">
+          <canvas id="chart" width="900" height="460" role="img"
+            aria-label="Two curves comparing hints needed: the new method C·h·log₂h versus the prior n/2 baseline, with the paper anchor at h=32, 320 hints marked."></canvas>
+          <figcaption class="muted">
+            Solid: this method <code>C·h·log₂h</code>. Dashed: prior baseline
+            <code>n/2</code> for the selected n. ◆ marks the paper anchor
+            <code>(h=32, 320 hints)</code>.
+          </figcaption>
+        </figure>
+      </section>
+
+      <!-- 4. Mechanism explainer -->
+      <section class="card" id="mechanism">
+        <h2>How it works</h2>
+        <p>
+          An LWE secret here is a <strong>sparse ternary</strong> vector
+          <code>s ∈ {−1, 0, +1}ⁿ</code> with only <code>h</code> nonzero entries
+          (<code>h ≪ n</code>). A side channel can leak <em>hints</em> — linear
+          equations about <code>s</code>:
+        </p>
+        <div class="hint-types">
+          <div class="hint-box">
+            <h3>Perfect hint</h3>
+            <p class="formula"><code>l = ⟨v, s⟩</code></p>
+            <p class="muted">An exact inner product. Maximally informative.</p>
+          </div>
+          <div class="hint-box">
+            <h3>Approximate hint</h3>
+            <p class="formula"><code>l = ⟨v, s⟩ + e</code></p>
+            <p class="muted">A noisy inner product (<code>e</code> small). Realistic leakage is usually like this.</p>
+          </div>
+        </div>
+        <p>
+          <strong>Why sparsity is the lever:</strong> the attacker doesn't need to
+          pin down all <code>n</code> coordinates — only the <code>h</code> nonzero
+          ones. The work scales with the <em>information content</em> of the secret
+          (<code>≈ h·log₂h</code>), not its ambient dimension <code>n</code>. When
+          <code>h ≪ n</code>, <code>O(h log h)</code> crushes <code>O(n)</code>.
+        </p>
+      </section>
+
+      <!-- 5. Threat-scenario calculator -->
+      <section class="card" id="calculator">
+        <h2>Threat-scenario calculator</h2>
+        <p class="muted">
+          Estimate whether your deployment leaks enough hints to cross the
+          new-method threshold for the selected <code>(n, h)</code>. Outputs are
+          <span class="badge badge-heuristic">heuristic · GAA-based</span>.
+        </p>
+        <div class="calc-grid">
+          <label class="calc-row">
+            <span>Hints leaked per operation</span>
+            <input type="number" id="calc-rate" min="0" step="0.001" value="0.05" />
+          </label>
+          <label class="calc-row">
+            <span>Operations performed</span>
+            <input type="number" id="calc-ops" min="0" step="1" value="5000" />
+          </label>
+        </div>
+        <div class="calc-result" id="calc-result" aria-live="polite">—</div>
+      </section>
+
+      <!-- 6. Misconceptions FAQ -->
+      <section class="card" id="faq">
+        <h2>Misconceptions</h2>
+        <details>
+          <summary>Does this break Kyber / Dilithium?</summary>
+          <p>
+            <strong>No.</strong> ML-KEM (Kyber) and ML-DSA (Dilithium) use
+            <em>non-sparse</em> secrets. This result leverages the
+            <em>sparse ternary</em> structure common in <strong>FHE</strong>
+            schemes. The lever here is low Hamming weight — remove the sparsity and
+            the speedup is gone.
+          </p>
+        </details>
+        <details>
+          <summary>Is LWE broken?</summary>
+          <p>
+            <strong>No.</strong> This is secret recovery <em>given side-channel
+            hints</em>. With no hints there is no speedup — per-instance LWE
+            hardness without leakage is intact. The contribution is that
+            <em>fewer</em> hints than previously thought are enough.
+          </p>
+        </details>
+        <details>
+          <summary>Is O(h log h) proven?</summary>
+          <p>
+            <strong>No — it is empirical / heuristic under the GAA</strong>
+            (Gaussian Approximation Assumption), a conservative lower-bound
+            analysis validated on FHE parameter sets. It is not a worst-case proof.
+          </p>
+        </details>
+        <details>
+          <summary>Does this demo run the attack?</summary>
+          <p>
+            <strong>No.</strong> It computes hint <em>counts</em> with plain
+            arithmetic (<code>C·h·log₂h</code> vs <code>n/2</code>). No lattice
+            reduction, no side channel, no randomness, no network. Same input ⇒
+            same output.
+          </p>
+        </details>
+      </section>
+
+      <!-- 7. Parameters & sources -->
+      <section class="card" id="sources">
+        <h2>Parameters &amp; sources</h2>
+        <p>
+          Source of truth: May et al., <em>"From Perfect to Approximate Hints"</em>,
+          IACR ePrint
+          <a href="https://eprint.iacr.org/2026/1081" target="_blank" rel="noopener">2026/1081</a>.
+          Full transcription with citations is in
+          <code>PAPER-NOTES.md</code>.
+        </p>
+        <div class="table-wrap">
+          <table id="param-table">
+            <thead>
+              <tr>
+                <th>Regime</th><th>n</th><th>h</th>
+                <th>Prior hints</th><th>New hints</th><th>Source</th>
+              </tr>
+            </thead>
+            <tbody><!-- injected by main.ts --></tbody>
+          </table>
+        </div>
+        <h3>Verify it yourself</h3>
+        <pre class="verify"><code id="verify-block"></code></pre>
+      </section>
+
+      <!-- 8. Known gaps -->
+      <section class="card known-gaps" id="known-gaps">
+        <h2>Known gaps (honest by construction)</h2>
+        <ul>
+          <li>
+            <strong>The PDF is not committed.</strong> IACR was Cloudflare-blocked
+            at build time (HTTP 403 to every automated fetch). <code>2026-1081.pdf</code>
+            must be downloaded in a browser and committed by hand.
+          </li>
+          <li>
+            <strong>Constant C is fit to one anchor.</strong> <code>C = 2</code>
+            reproduces the only Table 1 point we could source
+            <code>(n=2¹⁵, h=32) → 320</code>. It is <em>not yet</em> confirmed
+            against the paper's other rows — those need a manual read of the PDF.
+          </li>
+          <li>
+            <strong>This is a fit, not a re-run.</strong> The model is an idealized
+            <code>C·h·log₂h</code> curve, not a re-execution of the paper's lattice
+            estimator. It may not extrapolate beyond the paper's regimes.
+          </li>
+          <li>
+            <strong>The GAA is an assumption.</strong> The O(h log h) law is
+            empirical / heuristic under the Gaussian Approximation Assumption.
+          </li>
+          <li>
+            <strong>Hints presuppose a leakage channel</strong> this demo does not
+            model. "Recoverable" means the hint <em>budget</em> is met — not that an
+            attack was run.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="scripture-footer">
+      <p>So whether you eat or drink or whatever you do, do it all for the glory of God. — 1 Corinthians 10:31</p>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
