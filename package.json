@@ -1,0 +1,30 @@
+{
+  "name": "crypto-lab-lwe-hints",
+  "version": "1.0.0",
+  "description": "Educational estimator: how many side-channel hints recover a sparse-ternary LWE secret, under the O(h log h) law of ePrint 2026/1081.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "deploy": "npm run build && gh-pages -d dist"
+  },
+  "keywords": [
+    "lwe",
+    "lattice",
+    "fhe",
+    "post-quantum",
+    "side-channel",
+    "education"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "gh-pages": "^6.1.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "vitest": "^2.0.5"
+  }
+}
