@@ -45,8 +45,9 @@ export interface ParamSet {
   n: number;
   /** Hamming weight h (number of nonzero entries in the sparse ternary secret). */
   h: number;
-  /** Modulus bit-size log2(q) for this regime (Table 1). Informational: the
-   *  hint-count laws do NOT depend on q. Shown for transparency, not used in math. */
+  /** Modulus bit-size log2(q) for this regime (Table 1). Recorded for
+   *  completeness (and PAPER-NOTES.md); NOT displayed in the UI and NOT used in
+   *  any math — the hint-count laws depend only on (n, h). */
   log2q: number;
   /** Hints prior work needed (~n/2). */
   hintsPrior: number;

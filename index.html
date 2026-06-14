@@ -227,7 +227,7 @@
           <table id="param-table">
             <thead>
               <tr>
-                <th>Regime</th><th>n</th><th>log₂q</th><th>h</th>
+                <th>Regime</th><th>n</th><th>h</th>
                 <th>Prior hints</th><th>New hints</th>
                 <th>Validated hints</th><th>Source</th>
               </tr>
@@ -263,9 +263,9 @@
             anchor covers approximate + perfect.
           </li>
           <li>
-            <strong>q is shown but not modeled.</strong> The <code>log₂ q</code>
-            column above is transcribed from Table 1 for transparency; the
-            hint-count laws don't depend on the modulus, so the math keys off
+            <strong>q is not modeled.</strong> Table 1 lists a modulus bit-size
+            <code>log₂ q</code> per row (recorded in <code>PAPER-NOTES.md</code>);
+            the hint-count laws don't depend on the modulus, so the demo keys off
             <code>(n, h)</code> only.
           </li>
           <li>

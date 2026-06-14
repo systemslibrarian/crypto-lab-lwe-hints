@@ -42,9 +42,10 @@ emits with base `/crypto-lab-lwe-hints/`.
 
 ## Notes for Paul
 
-1. **`log₂ q` now surfaced.** Each `PARAM_SETS` row carries its Table 1 modulus
-   bit-size (`log2q`), shown in the in-app params table. It is informational only —
-   the hint-count laws don't depend on `q` — and a test pins it positive per row.
+1. **`log₂ q` recorded, not displayed.** Each `PARAM_SETS` row carries its Table 1
+   modulus bit-size (`log2q`) and it's transcribed in `PAPER-NOTES.md`, but it is
+   intentionally NOT shown in the UI (it doesn't affect the hint-count laws, which
+   depend only on `(n, h)`). A test still pins it positive per row.
 2. **Hint type now explicit per row.** Each row carries a `validatedHints` note
    transcribed from the paper: the `(2¹⁵,32)` anchor is approximate + perfect; the
    OpenFHE `(2¹⁵,192)` row is perfect-only (approximate not yet validated there);

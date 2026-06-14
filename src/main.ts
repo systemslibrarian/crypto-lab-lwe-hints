@@ -137,8 +137,7 @@ function renderTable(): void {
         ? '<span class="badge badge-paper">paper</span>'
         : '<span class="badge badge-heuristic">model</span>';
     return (
-      `<tr><td>${s.label}</td><td>2^${Math.round(Math.log2(s.n))}</td>` +
-      `<td>${s.log2q}</td><td>${s.h}</td>` +
+      `<tr><td>${s.label}</td><td>2^${Math.round(Math.log2(s.n))}</td><td>${s.h}</td>` +
       `<td>${fmt(s.hintsPrior)}</td><td>${fmt(s.hintsNew)}</td>` +
       `<td>${s.validatedHints}</td>` +
       `<td>${badge}<br><span class="muted">${s.cite}</span></td></tr>`
