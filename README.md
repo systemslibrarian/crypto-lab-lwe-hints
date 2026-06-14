@@ -10,9 +10,9 @@
 
 ## What It Is
 
-This demo teaches one result from May et al., *"From Perfect to Approximate
-Hints: Efficient LWE Secret Recovery Leveraging Low Hamming Weight"*
-([IACR ePrint 2026/1081](https://eprint.iacr.org/2026/1081)).
+This demo teaches one result from Hhan, Hong, Kim, Lee, and Lee, *"From Perfect
+to Approximate Hints: Efficient LWE Secret Recovery Leveraging Low Hamming
+Weight"* ([IACR ePrint 2026/1081](https://eprint.iacr.org/2026/1081)).
 
 LWE (Learning With Errors) underpins lattice post-quantum crypto and FHE. For
 efficiency, FHE often uses **sparse ternary secrets**: `s ∈ {−1, 0, +1}ⁿ` with

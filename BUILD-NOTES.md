@@ -36,9 +36,9 @@ disagrees with the model.
 | Authors / affiliation | Hhan (KAIST); Hong, C. Lee, J. Lee (Korea Univ.); Kim (Jeonbuk Nat. Univ.) | Title page |
 
 `PARAM_SETS` now contains **four real Table 1 rows** (h = 32, 64, 128, 192), all
-tagged `provenance: 'paper'`. `src/model.test.ts`: **37 tests, green**, pinning
-the full "Ours" and "[23]" columns. `npm test && npm run build` both pass; `dist/`
-emits with base `/crypto-lab-lwe-hints/`.
+tagged `provenance: 'paper'`. `src/model.test.ts`: **44 tests, green**, pinning
+the full "Ours" and "[23]" columns plus the verdict bands. `npm test && npm run
+build` both pass; `dist/` emits with base `/crypto-lab-lwe-hints/`.
 
 ## Notes for Paul
 
@@ -54,6 +54,18 @@ emits with base `/crypto-lab-lwe-hints/`.
 3. **The law is a fit under the GAA**, not a re-run of the paper's lattice
    estimator (stated in the in-app Known Gaps panel). C=2 is empirically exact on
    Table 1 but is not claimed to extrapolate arbitrarily beyond it.
+4. **Author attribution corrected.** Earlier user-facing copy (README, `model.ts`
+   header, `index.html`) credited "May et al." — wrong. The committed PDF and the
+   `PAPER-NOTES.md`/`BUILD-NOTES.md` transcriptions agree the authors are **Hhan,
+   Hong, Kim, Lee, Lee**. All public references now match.
+5. **Threat calculator hardened (review follow-up).** It now emits a prominent
+   **Safe / Manageable / Dangerous** verdict (`riskVerdict()` in `model.ts`,
+   banded at 0.5× and 1.0× of the budget, pinned by tests) and ships three
+   *illustrative* leak-rate scenarios (kept in `main.ts`, NOT paper numbers).
+6. **"What one hint is" visual.** The mechanism section now shows a fixed, worked
+   `l = ⟨v, s⟩` example with a Perfect/Approximate toggle, making the
+   linear-equation intuition and the perfect-vs-approximate distinction concrete.
+   The example is hardcoded and deterministic (no randomness).
 
 Earlier blocker (IACR Cloudflare 403) is **resolved** — the PDF is committed and
 the model is verified against the full table.

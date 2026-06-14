@@ -57,6 +57,8 @@ let paperPoints: Array<{ x: number; y: number; nExp: number; h: number }> = [];
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const fmt = (x: number) => Math.round(x).toLocaleString('en-US');
+/** Signed integer with a true Unicode minus, e.g. +3 / −1. */
+const signed = (x: number) => (x >= 0 ? `+${x}` : `−${Math.abs(x)}`);
 const cssVar = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -129,6 +131,24 @@ function renderCalc(): void {
   const available = rate * ops;
   const res = effectiveScenario(n(), h, available);
   const box = el('calc-result');
+
+  // Prominent Safe / Manageable / Dangerous verdict — the card's headline.
+  const VLABEL: Record<typeof res.verdict, string> = {
+    safe: 'Safe',
+    manageable: 'Manageable',
+    dangerous: 'Dangerous',
+  };
+  const VTEXT: Record<typeof res.verdict, string> = {
+    safe: `well under the new-method hint budget for (n = 2^${nExp}, h = ${h}).`,
+    manageable:
+      'within striking distance — a configuration change or a longer campaign could cross the budget.',
+    dangerous: `the new-method hint budget is met or exceeded for (n = 2^${nExp}, h = ${h}).`,
+  };
+  const verdictBox = el('calc-verdict');
+  verdictBox.className = 'calc-verdict';
+  verdictBox.innerHTML =
+    `<span class="verdict-chip ${res.verdict}">${VLABEL[res.verdict]}</span>` +
+    `<span class="verdict-text">${VTEXT[res.verdict]}</span>`;
 
   // progress bar: scale so both the fill and the threshold marker are visible,
   // including overshoot when available > threshold.
@@ -408,6 +428,102 @@ function drawSecret(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Render: "what one hint is" — a fixed, worked linear-equation example.
+// Deterministic illustration (NOT random, NOT tied to the (n,h) sliders): a tiny
+// secret of weight 3 in dimension 8, dotted with a known probe vector v.
+// ---------------------------------------------------------------------------
+const HE_SECRET = [0, 1, 0, 0, -1, 0, 1, 0]; // ternary, h = 3 of n = 8
+const HE_PROBE = [3, -1, 2, 0, 4, 1, -2, 5]; // known probe vector v
+const HE_NOISE = 1; // fixed small error e for the approximate illustration
+let heKind: 'perfect' | 'approx' = 'perfect';
+
+function renderHintEquation(): void {
+  const grid = el('he-grid');
+  // Each coordinate: probe value on top, secret value below; nonzero highlighted.
+  grid.innerHTML = HE_SECRET.map((s, i) => {
+    const cls = s > 0 ? 'pos' : s < 0 ? 'neg' : 'zero';
+    return (
+      `<span class="he-cell ${cls}">` +
+      `<span class="he-v">${signed(HE_PROBE[i])}</span>` +
+      `<span class="he-s">${s === 0 ? '0' : signed(s)}</span></span>`
+    );
+  }).join('');
+
+  const nz = HE_SECRET.map((_, i) => i).filter((i) => HE_SECRET[i] !== 0);
+  const terms = nz.map((i) => `(${signed(HE_PROBE[i])})(${signed(HE_SECRET[i])})`);
+  const exact = nz.reduce((acc, i) => acc + HE_PROBE[i] * HE_SECRET[i], 0);
+
+  const eq = el('he-equation');
+  const note = el('he-note');
+  if (heKind === 'perfect') {
+    eq.innerHTML =
+      `l = ⟨v, s⟩ = ${terms.join(' + ')} = ` +
+      `<span class="he-result">${signed(exact)}</span>`;
+    note.innerHTML =
+      'Perfect hint: an <em>exact</em> inner product — one clean linear equation on the ' +
+      'h unknown nonzero coordinates.';
+  } else {
+    const noisy = exact + HE_NOISE;
+    eq.innerHTML =
+      `l = ⟨v, s⟩ + e = ${signed(exact)} + e ≈ ` +
+      `<span class="he-result">${signed(noisy)}</span>`;
+    note.innerHTML =
+      'Approximate hint: the <em>same</em> equation, blurred by a small unknown error ' +
+      '<code>e</code>. Realistic side-channel leakage looks like this — and the paper ' +
+      'shows it is still enough.';
+  }
+}
+
+function setupHintEquation(): void {
+  const tabs = Array.from(document.querySelectorAll('.he-tab')) as HTMLButtonElement[];
+  for (const tab of tabs) {
+    tab.addEventListener('click', () => {
+      heKind = tab.dataset.kind === 'approx' ? 'approx' : 'perfect';
+      tabs.forEach((t) => t.setAttribute('aria-pressed', String(t === tab)));
+      renderHintEquation();
+    });
+  }
+  renderHintEquation();
+}
+
+// ---------------------------------------------------------------------------
+// Calculator scenario presets — ILLUSTRATIVE leak rates (not from the paper),
+// chosen to land in the Safe / Manageable / Dangerous bands against the (2^15,32)
+// anchor threshold of 320 hints.
+// ---------------------------------------------------------------------------
+interface CalcScenario {
+  label: string;
+  rate: number;
+  ops: number;
+  h: number;
+  nExp: number;
+}
+const CALC_SCENARIOS: CalcScenario[] = [
+  { label: 'Hardened / masked deployment', rate: 0.01, ops: 3000, h: 32, nExp: 15 }, //  30 → safe
+  { label: 'EM campaign, partial masking', rate: 0.05, ops: 4000, h: 32, nExp: 15 }, // 200 → manageable
+  { label: 'Unprotected DPA capture', rate: 0.2, ops: 3000, h: 32, nExp: 15 }, // 600 → dangerous
+];
+
+function buildScenarios(): void {
+  const box = el('calc-scenarios');
+  box.innerHTML = '';
+  for (const sc of CALC_SCENARIOS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'scenario-btn';
+    b.textContent = sc.label;
+    b.addEventListener('click', () => {
+      h = sc.h;
+      nExp = sc.nExp;
+      el<HTMLInputElement>('calc-rate').value = String(sc.rate);
+      el<HTMLInputElement>('calc-ops').value = String(sc.ops);
+      renderAll();
+    });
+    box.appendChild(b);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Wire up
 // ---------------------------------------------------------------------------
 function syncControls(): void {
@@ -559,9 +675,11 @@ function init(): void {
   setupThemeToggle();
   readUrlState();
   buildPresets();
+  buildScenarios();
   renderTable();
   setupChartClick();
   setupSelfCheck();
+  setupHintEquation();
   el<HTMLButtonElement>('aha-btn').addEventListener('click', runAha);
 
   el<HTMLInputElement>('h-slider').addEventListener('input', (e) => {

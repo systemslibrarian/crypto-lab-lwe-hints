@@ -69,6 +69,13 @@
           <li><strong>Safer pattern:</strong> raise the Hamming weight h, mask / rate-limit leakage, and treat hint-availability as part of the threat model.</li>
           <li><strong>What this is:</strong> an estimator of <em>hint counts</em> — it runs <em>no attack</em>, no lattice reduction, no randomness.</li>
         </ul>
+        <p class="tldr-cite muted">
+          Visualizing one result of Hhan et al., <em>“From Perfect to Approximate
+          Hints”</em>, IACR ePrint
+          <a href="https://eprint.iacr.org/2026/1081" target="_blank" rel="noopener">2026/1081</a>.
+          The counts come from the paper’s <strong>heuristic analysis under the Gaussian
+          Approximation Assumption</strong> — not from running an attack.
+        </p>
       </section>
 
       <!-- 2. Live readout -->
@@ -172,9 +179,35 @@
             <p class="muted">A noisy inner product (<code>e</code> small). Realistic leakage is usually like this.</p>
           </div>
         </div>
+        <!-- What a single hint concretely buys the attacker: one linear equation. -->
+        <div class="hint-eq" id="hint-eq">
+          <div class="hint-eq-head">
+            <h3>What one hint actually gives the attacker</h3>
+            <div class="he-toggle" role="group" aria-label="Hint type">
+              <button type="button" class="he-tab" data-kind="perfect" aria-pressed="true">Perfect</button>
+              <button type="button" class="he-tab" data-kind="approx" aria-pressed="false">Approximate</button>
+            </div>
+          </div>
+          <p class="muted">
+            A hint is <strong>one linear equation</strong> on the secret. The attacker
+            picks a known probe vector <code>v</code>; the side channel leaks its inner
+            product with <code>s</code>. Only the <strong>h nonzero</strong> coordinates
+            of <code>s</code> contribute a term — so each equation really constrains just
+            those <code>h</code> unknowns.
+          </p>
+          <div class="he-grid" id="he-grid" aria-hidden="true"><!-- v over s, injected by main.ts --></div>
+          <p class="he-equation" id="he-equation"><!-- equation injected --></p>
+          <p class="he-note muted" id="he-note"><!-- per-kind note injected --></p>
+          <p class="he-takeaway">
+            Stack ~<code>h·log₂h</code> such equations and the <code>h</code> unknowns are
+            pinned down. That is the whole game — and why the budget scales with
+            <code>h</code>, not <code>n</code>.
+          </p>
+        </div>
+
         <p class="surprise">
           <strong>The surprise:</strong> the leakage doesn't have to be clean.
-          Even <em>approximate</em> (noisy) hints still yield
+          Even <em>approximate</em> (noisy) hints — the right tab above — still yield
           <code>O(h·log₂h)</code>-scale recovery in the paper's validated regimes —
           so imperfect side-channel data can be enough.
         </p>
@@ -187,6 +220,42 @@
         </p>
       </section>
 
+      <!-- 4b. Where hints come from — grounds the threat model in real channels -->
+      <section class="card" id="origins">
+        <h2>Where hints come from in practice</h2>
+        <p>
+          This page assumes a leakage channel; it does not model one. But the
+          assumption is realistic. On real FHE implementations, a hint — one linear
+          equation on the secret — can fall out of physical side channels during the
+          secret-dependent steps of <strong>bootstrapping</strong>,
+          <strong>key-switching</strong>, or the <strong>NTT</strong>:
+        </p>
+        <ul class="origins-list">
+          <li>
+            <strong>Power analysis (DPA / CPA).</strong> Each multiply-accumulate over
+            <code>s</code> draws a secret-dependent amount of power. Averaging many
+            traces of the same operation recovers coordinate-level information — a
+            classic source of inner-product hints.
+          </li>
+          <li>
+            <strong>Cache &amp; timing.</strong> Secret-dependent table lookups or
+            branches in NTT / key-switch code leave a cache-access or timing footprint
+            an on-host or co-resident attacker can read.
+          </li>
+          <li>
+            <strong>EM emanation.</strong> A near-field probe over the chip captures the
+            same secret-dependent switching as power analysis, often without physical
+            contact.
+          </li>
+        </ul>
+        <p class="muted">
+          Each captured trace yields one or more hints — often <em>approximate</em>
+          (noisy) ones. The calculator below turns a per-operation leak rate into an
+          accumulated hint count and a Safe / Manageable / Dangerous verdict for the
+          selected <code>(n, h)</code>.
+        </p>
+      </section>
+
       <!-- 5. Threat-scenario calculator -->
       <section class="card" id="calculator">
         <h2>Threat-scenario calculator</h2>
@@ -195,6 +264,12 @@
           new-method threshold for the selected <code>(n, h)</code>. Outputs are
           <span class="badge badge-heuristic">heuristic · GAA-based</span>.
         </p>
+
+        <p class="calc-scenarios-label muted">Start from an illustrative scenario, then tune the numbers:</p>
+        <div class="calc-scenarios" id="calc-scenarios" role="group" aria-label="Illustrative leakage scenarios">
+          <!-- scenario buttons injected by main.ts -->
+        </div>
+
         <div class="calc-grid">
           <label class="calc-row">
             <span>Hints leaked per operation</span>
@@ -205,6 +280,10 @@
             <input type="number" id="calc-ops" min="0" step="1" value="5000" />
           </label>
         </div>
+
+        <!-- Prominent Safe / Manageable / Dangerous verdict (the headline of this card) -->
+        <div class="calc-verdict" id="calc-verdict" aria-live="polite"></div>
+
         <div class="calc-bar" role="img" aria-label="Hints accumulated versus the new-method threshold">
           <div class="calc-bar-fill" id="calc-bar-fill"></div>
           <div class="calc-bar-threshold" id="calc-bar-threshold" title="new-method threshold"></div>
@@ -273,8 +352,8 @@
       <section class="card" id="sources">
         <h2>Parameters &amp; sources</h2>
         <p>
-          Source of truth: May et al., <em>"From Perfect to Approximate Hints"</em>,
-          IACR ePrint
+          Source of truth: Minki Hhan, Ga Hee Hong, Jiseung Kim, Changmin Lee, and
+          JeongHwan Lee, <em>"From Perfect to Approximate Hints"</em>, IACR ePrint
           <a href="https://eprint.iacr.org/2026/1081" target="_blank" rel="noopener">2026/1081</a>.
           Full transcription with citations is in
           <code>PAPER-NOTES.md</code>.

@@ -215,7 +215,124 @@ figcaption { margin-top: 0.5rem; font-size: 0.85rem; }
 .hint-box h3 { margin-top: 0; }
 .formula { font-size: 1.1rem; }
 
+/* ---- Hint-as-equation visual (perfect vs approximate) ---- */
+.hint-eq {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  margin: 1rem 0;
+}
+.hint-eq-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.hint-eq-head h3 { margin: 0; }
+.he-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+.he-tab {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.he-tab + .he-tab { border-left: 1px solid var(--border); }
+.he-tab[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+}
+.he-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.he-grid { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.9rem 0; }
+.he-cell {
+  min-width: 2.1rem;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.25rem 0.15rem;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-elev);
+}
+.he-cell .he-v { display: block; font-size: 0.85rem; color: var(--text-muted); }
+.he-cell .he-s { display: block; font-size: 0.95rem; font-weight: 700; }
+.he-cell.zero { opacity: 0.5; }
+.he-cell.pos { border-color: var(--accent); }
+.he-cell.pos .he-s { color: var(--accent); }
+.he-cell.neg { border-color: var(--accent-2); }
+.he-cell.neg .he-s { color: var(--accent-2); }
+
+.he-equation {
+  font-family: 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+  font-size: 1.05rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+}
+.he-equation .he-result { font-weight: 700; color: var(--accent-anchor); }
+.he-note { margin: 0.25rem 0 0; font-size: 0.9rem; }
+.he-takeaway {
+  margin: 0.8rem 0 0;
+  padding: 0.55rem 0.85rem;
+  border-left: 3px solid var(--accent-anchor);
+  background: var(--bg-elev);
+  border-radius: 6px;
+  font-size: 0.92rem;
+}
+
+/* ---- Where hints come from ---- */
+.origins-list { margin: 0.75rem 0; padding-left: 1.2rem; }
+.origins-list li { margin: 0.5rem 0; }
+
+/* ---- TL;DR citation line ---- */
+.tldr-cite {
+  margin: 0.9rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
 /* ---- Calculator ---- */
+.calc-scenarios-label { margin: 0.5rem 0 0.4rem; font-size: 0.88rem; }
+.calc-scenarios { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.scenario-btn {
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.scenario-btn:hover { border-color: var(--accent); }
+.scenario-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Safe / Manageable / Dangerous verdict chip */
+.calc-verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+}
+.calc-verdict.empty { display: none; }
+.verdict-chip {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0.8rem;
+  border-radius: 8px;
+}
+.verdict-chip.safe { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); border: 1px solid var(--ok); }
+.verdict-chip.manageable { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); border: 1px solid var(--warn); }
+.verdict-chip.dangerous { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger); border: 1px solid var(--danger); }
+.verdict-text { color: var(--text-muted); }
+
 .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
 .calc-row { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.9rem; }
 .calc-row input {
@@ -397,7 +514,8 @@ td { font-variant-numeric: tabular-nums; }
   .readout { grid-template-columns: 1fr; }
   .hint-types, .calc-grid { grid-template-columns: 1fr; }
   /* keep tap targets comfortable on touch screens */
-  .preset-btn { padding: 0.55rem 0.9rem; }
+  .preset-btn, .scenario-btn { padding: 0.55rem 0.9rem; }
+  .he-equation { font-size: 0.92rem; }
 }
 
 /* ---- Respect reduced-motion preference (WCAG 2.3.3) ---- */

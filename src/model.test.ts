@@ -16,6 +16,8 @@ import {
   hintsPrior,
   reductionFactor,
   effectiveScenario,
+  riskVerdict,
+  MANAGEABLE_FRACTION,
   PARAM_SETS,
 } from './model';
 
@@ -168,6 +170,45 @@ describe('effectiveScenario crosses the new-method threshold', () => {
     const above = effectiveScenario(2 ** 15, 32, 1000);
     expect(above.status).toBe('recoverable');
     expect(above.margin).toBeGreaterThan(0);
+  });
+});
+
+describe('riskVerdict bands (Safe / Manageable / Dangerous)', () => {
+  it('is safe well below the threshold', () => {
+    expect(riskVerdict(0)).toBe('safe');
+    expect(riskVerdict(0.25)).toBe('safe');
+    expect(riskVerdict(MANAGEABLE_FRACTION - 0.001)).toBe('safe');
+  });
+
+  it('is manageable within striking distance', () => {
+    expect(riskVerdict(MANAGEABLE_FRACTION)).toBe('manageable');
+    expect(riskVerdict(0.75)).toBe('manageable');
+    expect(riskVerdict(0.999)).toBe('manageable');
+  });
+
+  it('is dangerous at or above the threshold', () => {
+    expect(riskVerdict(1)).toBe('dangerous');
+    expect(riskVerdict(2.5)).toBe('dangerous');
+  });
+
+  it('throws on negative or non-finite fractions', () => {
+    expect(() => riskVerdict(-0.1)).toThrow();
+    expect(() => riskVerdict(Infinity)).toThrow();
+    expect(() => riskVerdict(NaN)).toThrow();
+  });
+
+  it('effectiveScenario carries a verdict consistent with status', () => {
+    const safe = effectiveScenario(2 ** 15, 32, 50); // 50/320 = 0.16
+    expect(safe.verdict).toBe('safe');
+    expect(safe.status).toBe('not-yet');
+
+    const manageable = effectiveScenario(2 ** 15, 32, 200); // 200/320 = 0.625
+    expect(manageable.verdict).toBe('manageable');
+    expect(manageable.status).toBe('not-yet');
+
+    const dangerous = effectiveScenario(2 ** 15, 32, 320); // exactly the budget
+    expect(dangerous.verdict).toBe('dangerous');
+    expect(dangerous.status).toBe('recoverable');
   });
 });
 

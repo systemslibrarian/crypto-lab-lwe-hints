@@ -6,8 +6,8 @@
  * reduction, no side-channel, no randomness, no clock, no network. Every number
  * is real arithmetic you can audit here and in PAPER-NOTES.md.
  *
- * Source of truth: May et al., "From Perfect to Approximate Hints: Efficient LWE
- * Secret Recovery Leveraging Low Hamming Weight", IACR ePrint 2026/1081.
+ * Source of truth: Hhan, Hong, Kim, Lee, Lee, "From Perfect to Approximate Hints:
+ * Efficient LWE Secret Recovery Leveraging Low Hamming Weight", IACR ePrint 2026/1081.
  *
  * THE TWO LAWS (see PAPER-NOTES.md for citations):
  *   - New method (this paper):   hintsNew(h)  = C * h * log2(h)     [O(h log h)]
@@ -115,6 +115,34 @@ export function reductionFactor(n: number, h: number): number {
 
 export type Recoverability = 'recoverable' | 'not-yet';
 
+/**
+ * Practitioner-facing risk band for the threat calculator. This is a coarse
+ * readout of how close `hintsAvailable` is to the new-method hint budget — NOT a
+ * claim that an attack does or does not succeed.
+ *   - 'safe'       : well under the budget (< MANAGEABLE_FRACTION of threshold)
+ *   - 'manageable' : within striking distance (>= MANAGEABLE_FRACTION, < threshold)
+ *   - 'dangerous'  : budget met or exceeded (>= threshold)
+ */
+export type Verdict = 'safe' | 'manageable' | 'dangerous';
+
+/** Fraction of the threshold at which the calculator stops calling a deployment
+ *  'safe' and starts calling it 'manageable'. Heuristic UI band, not from the paper. */
+export const MANAGEABLE_FRACTION = 0.5;
+
+/**
+ * Map a fraction-of-threshold to a coarse Safe / Manageable / Dangerous band.
+ * Pure and total over fraction >= 0; throws on negative or non-finite input.
+ */
+export function riskVerdict(fractionOfThreshold: number): Verdict {
+  requireFinite('fractionOfThreshold', fractionOfThreshold);
+  if (fractionOfThreshold < 0) {
+    throw new Error(`fractionOfThreshold must be >= 0 (got ${fractionOfThreshold})`);
+  }
+  if (fractionOfThreshold >= 1) return 'dangerous';
+  if (fractionOfThreshold >= MANAGEABLE_FRACTION) return 'manageable';
+  return 'safe';
+}
+
 export interface ScenarioResult {
   /** Hints the new method needs for this (n,h). */
   threshold: number;
@@ -122,6 +150,8 @@ export interface ScenarioResult {
   available: number;
   /** Does available cross the new-method threshold? */
   status: Recoverability;
+  /** Coarse Safe / Manageable / Dangerous band derived from fractionOfThreshold. */
+  verdict: Verdict;
   /** available - threshold (negative = shortfall). */
   margin: number;
   /** Fraction of the threshold the attacker has accumulated, clamped to [0, 1+]. */
@@ -146,7 +176,8 @@ export function effectiveScenario(n: number, h: number, hintsAvailable: number):
   const margin = hintsAvailable - threshold;
   const status: Recoverability = hintsAvailable >= threshold ? 'recoverable' : 'not-yet';
   const fractionOfThreshold = threshold === 0 ? 1 : hintsAvailable / threshold;
-  return { threshold, available: hintsAvailable, status, margin, fractionOfThreshold };
+  const verdict = riskVerdict(fractionOfThreshold);
+  return { threshold, available: hintsAvailable, status, verdict, margin, fractionOfThreshold };
 }
 
 /**
