@@ -40,6 +40,14 @@
       </button>
     </header>
 
+    <!-- Persistent headline: the emotional center, kept visible while scrolling. -->
+    <div class="sticky-headline" id="sticky-headline" aria-hidden="true">
+      <span class="sh-item"><span class="sh-label">This method</span><span class="sh-num sh-new" id="sh-new">320</span></span>
+      <span class="sh-vs">vs</span>
+      <span class="sh-item"><span class="sh-label">Prior</span><span class="sh-num sh-prior" id="sh-prior">16,384</span></span>
+      <span class="sh-item sh-drop"><span class="sh-label">Drop</span><span class="sh-num" id="sh-ratio">51.2×</span></span>
+    </div>
+
     <main>
       <!-- 1. TL;DR -->
       <section class="card tldr" id="tldr">
@@ -51,6 +59,10 @@
           <code>(n = 2¹⁵, h = 32)</code> that is
           <strong>320 hints instead of 16,384</strong> — a
           <strong>~50× drop</strong>.
+        </p>
+        <p>
+          <button type="button" class="aha-btn" id="aha-btn">▶ Show me the collapse</button>
+          <span class="aha-step muted" id="aha-step"></span>
         </p>
         <ul class="tldr-points">
           <li><strong>Who's exposed:</strong> sparse-secret FHE / bootstrapping deployments with a side-channel leakage path.</li>
@@ -84,6 +96,10 @@
             <span class="stat-value big" id="ro-ratio">—</span>
           </div>
         </div>
+        <p class="micro-summary">
+          This means the paper's <strong>hint budget</strong> is met — it does
+          <strong>not</strong> mean this page ran an attack.
+        </p>
       </section>
 
       <!-- 3. Interactive chart -->
@@ -98,7 +114,7 @@
         <div class="controls">
           <label class="slider-row">
             <span>Hamming weight h: <output id="h-out">32</output></span>
-            <input type="range" id="h-slider" min="1" max="256" step="1" value="32" />
+            <input type="range" id="h-slider" min="2" max="256" step="1" value="32" />
           </label>
           <label class="slider-row">
             <span>Dimension n = 2^<output id="n-exp-out">15</output> (<output id="n-out">32768</output>)</span>
@@ -106,17 +122,24 @@
           </label>
         </div>
 
+        <p class="lesson-note">
+          Drag <strong>h</strong> → the dot on the solid (new) curve moves. Drag
+          <strong>n</strong> → only the dashed (prior) line moves. <em>The old
+          threshold cares about n; the new one mostly cares about h.</em>
+        </p>
+
         <div class="presets" id="presets" role="group" aria-label="Paper / model parameter regimes">
           <!-- preset buttons injected by main.ts -->
         </div>
 
         <figure class="chart-wrap">
-          <canvas id="chart" width="900" height="460" role="img"
-            aria-label="Two curves comparing hints needed: the new method C·h·log₂h versus the prior n/2 baseline, with the paper anchor at h=32, 320 hints marked."></canvas>
+          <canvas id="chart" width="900" height="460" role="img" title="Click a ◆ paper point to load that regime"
+            aria-label="Two curves comparing hints needed: the new method C·h·log₂h versus the prior n/2 baseline. The four paper Table-1 Hamming weights (h = 32, 64, 128, 192) are marked as diamonds on the new curve."></canvas>
           <figcaption class="muted">
             Solid: this method <code>C·h·log₂h</code>. Dashed: prior baseline
-            <code>n/2</code> for the selected n. ◆ marks the paper anchor
-            <code>(h=32, 320 hints)</code>.
+            <code>n/2</code> for the selected n. ◆ = the four paper Table 1
+            weights <code>h = 32, 64, 128, 192</code> — <strong>click one</strong>
+            to load that regime.
           </figcaption>
         </figure>
       </section>
@@ -130,6 +153,13 @@
           (<code>h ≪ n</code>). A side channel can leak <em>hints</em> — linear
           equations about <code>s</code>:
         </p>
+
+        <figure class="secret-viz">
+          <canvas id="secret-strip" width="900" height="120" role="img"
+            aria-label="A strip of coordinates representing the secret vector: almost all are zero, with only a few highlighted nonzero (+1 or -1) entries."></canvas>
+          <figcaption class="muted" id="secret-caption">—</figcaption>
+        </figure>
+
         <div class="hint-types">
           <div class="hint-box">
             <h3>Perfect hint</h3>
@@ -142,6 +172,12 @@
             <p class="muted">A noisy inner product (<code>e</code> small). Realistic leakage is usually like this.</p>
           </div>
         </div>
+        <p class="surprise">
+          <strong>The surprise:</strong> the leakage doesn't have to be clean.
+          Even <em>approximate</em> (noisy) hints still yield
+          <code>O(h·log₂h)</code>-scale recovery in the paper's validated regimes —
+          so imperfect side-channel data can be enough.
+        </p>
         <p>
           <strong>Why sparsity is the lever:</strong> the attacker doesn't need to
           pin down all <code>n</code> coordinates — only the <code>h</code> nonzero
@@ -169,7 +205,27 @@
             <input type="number" id="calc-ops" min="0" step="1" value="5000" />
           </label>
         </div>
+        <div class="calc-bar" role="img" aria-label="Hints accumulated versus the new-method threshold">
+          <div class="calc-bar-fill" id="calc-bar-fill"></div>
+          <div class="calc-bar-threshold" id="calc-bar-threshold" title="new-method threshold"></div>
+        </div>
         <div class="calc-result" id="calc-result" aria-live="polite">—</div>
+      </section>
+
+      <!-- 5b. Self-check -->
+      <section class="card selfcheck" id="selfcheck">
+        <h2>Quick self-check</h2>
+        <p>
+          If <code>n</code> doubles (say 2¹⁵ → 2¹⁶) but the Hamming weight
+          <code>h</code> stays 32, what happens to <em>this method's</em> hint
+          threshold?
+        </p>
+        <div class="sc-options" id="sc-options" role="group" aria-label="Answer choices">
+          <button type="button" class="sc-opt" data-correct="false">It roughly doubles</button>
+          <button type="button" class="sc-opt" data-correct="true">It stays about the same</button>
+          <button type="button" class="sc-opt" data-correct="false">It roughly halves</button>
+        </div>
+        <div class="sc-feedback" id="sc-feedback" aria-live="polite"></div>
       </section>
 
       <!-- 6. Misconceptions FAQ -->
