@@ -45,10 +45,16 @@ export interface ParamSet {
   n: number;
   /** Hamming weight h (number of nonzero entries in the sparse ternary secret). */
   h: number;
+  /** Modulus bit-size log2(q) for this regime (Table 1). Informational: the
+   *  hint-count laws do NOT depend on q. Shown for transparency, not used in math. */
+  log2q: number;
   /** Hints prior work needed (~n/2). */
   hintsPrior: number;
   /** Hints this method needs (~C*h*log2 h). */
   hintsNew: number;
+  /** Which hint types the paper actually validated for this row (perfect vs
+   *  approximate). Free text transcribed from the paper, not overclaimed. */
+  validatedHints: string;
   /** Where these numbers come from — drives the honesty badge in the UI. */
   provenance: Provenance;
   /** Citation string for the drill-down panel. */
@@ -154,8 +160,10 @@ export const PARAM_SETS: ParamSet[] = [
     label: 'FHE bootstrapping [7],[28]',
     n: 2 ** 15,
     h: 32,
+    log2q: 161,
     hintsPrior: 2 ** 14,            // 16,384 — Table 1 "[23]"
     hintsNew: 320,                   // Table 1 "Ours"
+    validatedHints: 'approximate + perfect', // abstract: "320 approximate/perfect hints"
     provenance: 'paper',
     cite: 'Table 1, row [7],[28] (n=2^15, log2 q=161, h=32)',
   },
@@ -163,8 +171,10 @@ export const PARAM_SETS: ParamSet[] = [
     label: 'Larger ring [30]',
     n: 2 ** 16,
     h: 64,
+    log2q: 795,
     hintsPrior: 2 ** 15,            // 32,768 — Table 1 "[23]"
     hintsNew: 768,                   // Table 1 "Ours"
+    validatedHints: 'perfect',       // paper confirms recovery via perfect hints
     provenance: 'paper',
     cite: 'Table 1, row [30] (n=2^16, log2 q=795, h=64)',
   },
@@ -172,8 +182,10 @@ export const PARAM_SETS: ParamSet[] = [
     label: 'Denser secret [12]',
     n: 2 ** 15,
     h: 128,
+    log2q: 699,
     hintsPrior: 2 ** 14,            // 16,384 — Table 1 "[23]"
     hintsNew: 1792,                  // Table 1 "Ours"
+    validatedHints: 'perfect',       // paper confirms recovery via perfect hints
     provenance: 'paper',
     cite: 'Table 1, row [12] (n=2^15, log2 q=699, h=128)',
   },
@@ -181,9 +193,11 @@ export const PARAM_SETS: ParamSet[] = [
     label: 'OpenFHE [31],[32],[33]',
     n: 2 ** 15,
     h: 192,
+    log2q: 768,
     hintsPrior: 2 ** 14,            // 16,384 — Table 1 "[23]"
     hintsNew: 2913,                  // Table 1 "Ours" (2*192*log2 192 = 2912.6, rounded)
+    validatedHints: 'perfect only (approximate not yet validated)', // abstract
     provenance: 'paper',
-    cite: 'Table 1, row [31],[32],[33] (n=2^15, log2 q=768, h=192); perfect hints only',
+    cite: 'Table 1, row [31],[32],[33] (n=2^15, log2 q=768, h=192)',
   },
 ];

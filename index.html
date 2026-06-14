@@ -227,8 +227,9 @@
           <table id="param-table">
             <thead>
               <tr>
-                <th>Regime</th><th>n</th><th>h</th>
-                <th>Prior hints</th><th>New hints</th><th>Source</th>
+                <th>Regime</th><th>n</th><th>log₂q</th><th>h</th>
+                <th>Prior hints</th><th>New hints</th>
+                <th>Validated hints</th><th>Source</th>
               </tr>
             </thead>
             <tbody><!-- injected by main.ts --></tbody>
@@ -255,14 +256,17 @@
             conservative lower-bound analysis, not a worst-case proof.
           </li>
           <li>
-            <strong>h = 192 is perfect-hints-only.</strong> For the OpenFHE
-            <code>(2¹⁵, 192)</code> regime the paper validated <em>perfect</em>
-            hints; approximate hints were not yet validated there.
+            <strong>Hint type varies by regime.</strong> The "Validated hints"
+            column above transcribes what the paper actually tested per row — e.g.
+            the OpenFHE <code>(2¹⁵, 192)</code> regime is <em>perfect hints only</em>
+            (approximate not yet validated there), while the <code>(2¹⁵, 32)</code>
+            anchor covers approximate + perfect.
           </li>
           <li>
-            <strong>q is not modeled.</strong> Table 1 lists a modulus bit-size
-            <code>log₂ q</code> per row; the hint-count laws don't depend on it, so
-            the demo keys off <code>(n, h)</code> only.
+            <strong>q is shown but not modeled.</strong> The <code>log₂ q</code>
+            column above is transcribed from Table 1 for transparency; the
+            hint-count laws don't depend on the modulus, so the math keys off
+            <code>(n, h)</code> only.
           </li>
           <li>
             <strong>Hints presuppose a leakage channel</strong> this demo does not

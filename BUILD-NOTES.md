@@ -40,17 +40,19 @@ tagged `provenance: 'paper'`. `src/model.test.ts`: **37 tests, green**, pinning
 the full "Ours" and "[23]" columns. `npm test && npm run build` both pass; `dist/`
 emits with base `/crypto-lab-lwe-hints/`.
 
-## Notes / minor caveats for Paul
+## Notes for Paul
 
-1. **`log₂ q` values not surfaced in the UI.** Table 1 also lists the modulus
-   bit-size per row; the demo keys off `(n, h)` only (the hint-count laws don't
-   depend on `q`). The values are recorded in `PAPER-NOTES.md` for completeness.
-2. **h=192 is perfect-hints-only.** The abstract notes approximate hints "have
-   not yet been validated" for the OpenFHE `(2¹⁵,192)` setting; the preset/cite
-   say so. The count 2913 still follows the same `C·h·log₂h` law.
+1. **`log₂ q` now surfaced.** Each `PARAM_SETS` row carries its Table 1 modulus
+   bit-size (`log2q`), shown in the in-app params table. It is informational only —
+   the hint-count laws don't depend on `q` — and a test pins it positive per row.
+2. **Hint type now explicit per row.** Each row carries a `validatedHints` note
+   transcribed from the paper: the `(2¹⁵,32)` anchor is approximate + perfect; the
+   OpenFHE `(2¹⁵,192)` row is perfect-only (approximate not yet validated there);
+   `[30]`/`[12]` are marked perfect (what the paper confirms). Shown in the params
+   table and pinned by a test. The count 2913 still follows the same `C·h·log₂h`.
 3. **The law is a fit under the GAA**, not a re-run of the paper's lattice
    estimator (stated in the in-app Known Gaps panel). C=2 is empirically exact on
    Table 1 but is not claimed to extrapolate arbitrarily beyond it.
 
 Earlier blocker (IACR Cloudflare 403) is **resolved** — the PDF is committed and
-the model is verified against the full table. Ready for review / push.
+the model is verified against the full table.

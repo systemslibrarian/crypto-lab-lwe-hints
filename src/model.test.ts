@@ -100,6 +100,21 @@ describe('PARAM_SETS rows reproduce via the model functions', () => {
     const weights = PARAM_SETS.map((s) => s.h).sort((a, b) => a - b);
     expect(weights).toEqual([32, 64, 128, 192]);
   });
+
+  it('every row carries a positive log2q and a non-empty validatedHints note', () => {
+    for (const s of PARAM_SETS) {
+      expect(Number.isInteger(s.log2q)).toBe(true);
+      expect(s.log2q).toBeGreaterThan(0);
+      expect(s.validatedHints.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('OpenFHE (2^15,192) row is flagged perfect-hints-only', () => {
+    const openfhe = PARAM_SETS.find((s) => s.n === 2 ** 15 && s.h === 192);
+    expect(openfhe).toBeDefined();
+    expect(openfhe!.log2q).toBe(768);
+    expect(openfhe!.validatedHints).toMatch(/perfect only/i);
+  });
 });
 
 describe('monotonicity', () => {
