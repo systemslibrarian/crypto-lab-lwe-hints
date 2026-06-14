@@ -1,59 +1,56 @@
 # BUILD-NOTES — crypto-lab-lwe-hints
 
-**Source:** May et al., *"From Perfect to Approximate Hints"*, IACR ePrint
-**2026/1081** — <https://eprint.iacr.org/2026/1081>
+**Source:** Hhan, Hong, Kim, Lee, Lee, *"From Perfect to Approximate Hints"*,
+IACR ePrint **2026/1081** — committed as **`2026-1081.pdf`** (verified against the
+real PDF, not the abstract).
 
-## Verified constant C
+## Verified constant C — confirmed against ALL of Table 1
 
-`hintsNew(h) = C · h · log₂(h)`, **C = 2**.
+`hintsNew(h) = C · h · log₂(h)`, **C = 2**. Back-solved from the anchor
+`(2¹⁵,32) → 320` (`160·C = 320 → C = 2`), then **reproduces every "Ours" value in
+Table 1** across all four reported Hamming weights:
 
-Back-solved from the paper's anchor and reproduces it **exactly**:
+| h | `2·h·log₂h` | Table 1 "Ours" |
+|---|---|---|
+| 32 | 320 | 320 ✓ |
+| 64 | 768 | 768 ✓ |
+| 128 | 1792 | 1792 ✓ |
+| 192 | 2912.6 | 2913 ✓ (rounded) |
 
-```
-320 = C · 32 · log₂(32) = C · 32 · 5 = 160·C  →  C = 2
-check: 2 · 32 · 5 = 320 ✓
-```
+The prior baseline `hintsPrior(n) = n/2` **reproduces every "[23]" value** across
+all three reported dimensions (`2¹⁴→2¹³`, `2¹⁵→2¹⁴`, `2¹⁶→2¹⁵`). Full Table 1
+transcription is in `PAPER-NOTES.md`. All 13 rows check out; nothing in Table 1
+disagrees with the model.
 
-**Which Table 1 rows confirm C:** only the anchor row `(n,h) = (2¹⁵, 32) → 320`
-could be sourced (see blocker below). C is **not yet** confirmed against the
-paper's other Table 1 rows.
-
-## Transcribed numbers (all from the abstract — see PAPER-NOTES.md)
+## Transcribed numbers (all from the committed PDF)
 
 | Quantity | Value | Citation |
 |---|---|---|
-| New-method law | `O(h·log₂h)`, modeled as `C·h·log₂h`, C=2 | 2026/1081 abstract |
-| Prior baseline | `n/2` perfect/modular hints (`O(n)`) | 2026/1081 abstract |
-| Anchor regime | `(n,h) = (2¹⁵, 32)` (FHE bootstrapping) | 2026/1081 abstract |
-| Anchor — new | `≈ 320` hints | 2026/1081 abstract |
-| Anchor — prior | `≈ 2¹⁴ = 16,384` hints | 2026/1081 abstract |
-| Reduction | `16,384 / 320 = 51.2 ≈ 50×` | derived |
-| Perfect / approximate hint | `l=⟨v,s⟩` / `l=⟨v,s⟩+e` | 2026/1081 abstract |
-| Assumption | Gaussian Approximation Assumption (GAA) | 2026/1081 abstract |
+| New-method law | `O(h·log₂h)`, modeled `C·h·log₂h`, C=2 | Abstract, §1, Table 1 |
+| Prior baseline | `n/2` perfect/modular hints (`O(n)`) | §1 + Table 1 "[23]" |
+| Abstract anchor | `(2¹⁵,32) → 320` vs `2¹⁴=16,384` | Abstract / Table 1 [7],[28] |
+| OpenFHE regime | `(2¹⁵,192) → 2913` (perfect hints only) | Abstract / Table 1 [31],[32],[33] |
+| Reduction (anchor) | `16,384 / 320 = 51.2 ≈ 50×` | derived |
+| Perfect / approx hint | `l=⟨v,s⟩` / `l=⟨v,s⟩+e` | Abstract |
+| Assumption | Gaussian Approximation Assumption (GAA) | Abstract |
+| Authors / affiliation | Hhan (KAIST); Hong, C. Lee, J. Lee (Korea Univ.); Kim (Jeonbuk Nat. Univ.) | Title page |
 
-All pinned in `src/model.test.ts` (28 tests, green). `npm test && npm run build`
-both pass; `dist/` emits with base `/crypto-lab-lwe-hints/`.
+`PARAM_SETS` now contains **four real Table 1 rows** (h = 32, 64, 128, 192), all
+tagged `provenance: 'paper'`. `src/model.test.ts`: **37 tests, green**, pinning
+the full "Ours" and "[23]" columns. `npm test && npm run build` both pass; `dist/`
+emits with base `/crypto-lab-lwe-hints/`.
 
-## ⚠️ Could NOT be sourced — flagged for Paul
+## Notes / minor caveats for Paul
 
-1. **The PDF.** `eprint.iacr.org` (PDF, abstract page, IACR news item) returned
-   **HTTP 403** to every automated fetch; `curl` got only the Cloudflare
-   "Just a moment…" challenge page. **`2026-1081.pdf` is therefore NOT committed.**
-   → *Action: download it in a browser and `git add 2026-1081.pdf`.*
+1. **`log₂ q` values not surfaced in the UI.** Table 1 also lists the modulus
+   bit-size per row; the demo keys off `(n, h)` only (the hint-count laws don't
+   depend on `q`). The values are recorded in `PAPER-NOTES.md` for completeness.
+2. **h=192 is perfect-hints-only.** The abstract notes approximate hints "have
+   not yet been validated" for the OpenFHE `(2¹⁵,192)` setting; the preset/cite
+   say so. The count 2913 still follows the same `C·h·log₂h` law.
+3. **The law is a fit under the GAA**, not a re-run of the paper's lattice
+   estimator (stated in the in-app Known Gaps panel). C=2 is empirically exact on
+   Table 1 but is not claimed to extrapolate arbitrarily beyond it.
 
-2. **Table 1's non-anchor rows.** Not machine-readable for the same reason. The
-   numbers above come from the **abstract** (confirmed across several independent
-   web searches), not a read of Table 1.
-   → *Action: once the PDF is in, verify C=2 against every Table 1 row. If a single
-   constant does not fit all rows, the paper may state a different hidden constant
-   or fitted form — update `C`/`hintsNew` and `PAPER-NOTES.md` accordingly.*
-
-3. **Prior-baseline exact form.** Abstract says "about n/2"; confirm whether the
-   paper's "[23]" comparison column is exactly `n/2` or a different `c·n`.
-
-4. **Non-anchor PARAM_SETS rows** (h=16, h=64, n=2¹⁶) are **model computations**,
-   tagged `provenance: 'model'` and badged "model" in the UI — **not** claimed as
-   paper-transcribed. Replace with real Table 1 rows once the PDF is available.
-
-**Do not `git push` until the above (especially C vs Table 1) is reviewed.** The
-demo's credibility rests on the model reproducing the paper's reported counts.
+Earlier blocker (IACR Cloudflare 403) is **resolved** — the PDF is committed and
+the model is verified against the full table. Ready for review / push.

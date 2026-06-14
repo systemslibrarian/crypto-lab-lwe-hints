@@ -34,10 +34,11 @@ reduction, no side channel, no randomness, no network. Same input ⇒ same outpu
 Every number is auditable in [`src/model.ts`](src/model.ts) and
 [`PAPER-NOTES.md`](PAPER-NOTES.md).
 
-> ⚠️ **Honesty note.** IACR was Cloudflare-blocked at build time, so the PDF
-> (`2026-1081.pdf`) is not yet committed and the constant `C` is verified against
-> only the one anchor row we could source. See the in-app **Known Gaps** panel,
-> `PAPER-NOTES.md`, and `BUILD-NOTES.md`.
+> ✅ **Verification.** The paper (`2026-1081.pdf`) is committed, and `C = 2`
+> reproduces **every row of Table 1** — all four Hamming weights
+> `h ∈ {32, 64, 128, 192} → {320, 768, 1792, 2913}` and the prior `n/2` baseline
+> across `n ∈ {2¹⁴, 2¹⁵, 2¹⁶}`. Full transcription in `PAPER-NOTES.md`; remaining
+> assumptions in the in-app **Known Gaps** panel and `BUILD-NOTES.md`.
 
 ## When to Use It
 

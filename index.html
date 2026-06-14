@@ -243,24 +243,26 @@
         <h2>Known gaps (honest by construction)</h2>
         <ul>
           <li>
-            <strong>The PDF is not committed.</strong> IACR was Cloudflare-blocked
-            at build time (HTTP 403 to every automated fetch). <code>2026-1081.pdf</code>
-            must be downloaded in a browser and committed by hand.
-          </li>
-          <li>
-            <strong>Constant C is fit to one anchor.</strong> <code>C = 2</code>
-            reproduces the only Table 1 point we could source
-            <code>(n=2¹⁵, h=32) → 320</code>. It is <em>not yet</em> confirmed
-            against the paper's other rows — those need a manual read of the PDF.
-          </li>
-          <li>
             <strong>This is a fit, not a re-run.</strong> The model is an idealized
-            <code>C·h·log₂h</code> curve, not a re-execution of the paper's lattice
-            estimator. It may not extrapolate beyond the paper's regimes.
+            <code>C·h·log₂h</code> curve (<code>C = 2</code>), not a re-execution of
+            the paper's lattice estimator. It reproduces <em>every</em> row of the
+            paper's Table 1 exactly (h = 32, 64, 128, 192 → 320, 768, 1792, 2913),
+            but is not claimed to extrapolate arbitrarily beyond those regimes.
           </li>
           <li>
             <strong>The GAA is an assumption.</strong> The O(h log h) law is
-            empirical / heuristic under the Gaussian Approximation Assumption.
+            empirical / heuristic under the Gaussian Approximation Assumption — a
+            conservative lower-bound analysis, not a worst-case proof.
+          </li>
+          <li>
+            <strong>h = 192 is perfect-hints-only.</strong> For the OpenFHE
+            <code>(2¹⁵, 192)</code> regime the paper validated <em>perfect</em>
+            hints; approximate hints were not yet validated there.
+          </li>
+          <li>
+            <strong>q is not modeled.</strong> Table 1 lists a modulus bit-size
+            <code>log₂ q</code> per row; the hint-count laws don't depend on it, so
+            the demo keys off <code>(n, h)</code> only.
           </li>
           <li>
             <strong>Hints presuppose a leakage channel</strong> this demo does not

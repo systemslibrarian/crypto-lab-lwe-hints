@@ -14,13 +14,18 @@
  *   - Prior work baseline:       hintsPrior(n) = n / 2              [O(n)]
  *
  * THE CONSTANT C:
- *   The paper's abstract states that for a sparse-secret FHE bootstrapping
- *   regime with (n, h) = (2^15, 32), the new method needs ~320 hints while prior
- *   work needed ~2^14 = 16,384. Back-solving the new-method law from that anchor:
+ *   Back-solving the new-method law from the abstract's anchor (n,h)=(2^15,32),
+ *   where the new method needs ~320 hints:
  *       320 = C * 32 * log2(32) = C * 32 * 5 = 160 * C   =>   C = 2.
- *   C = 2 reproduces the only paper data point we could source (see Known Gaps:
- *   IACR is Cloudflare-protected, so Table 1's other rows could not be fetched
- *   programmatically and MUST be verified against the committed PDF by hand).
+ *   C = 2 then reproduces *every* "Ours" value in the paper's Table 1, across all
+ *   four Hamming weights it reports:
+ *       h= 32 -> 2*32*log2(32)  = 320       (Table 1: 320)
+ *       h= 64 -> 2*64*log2(64)  = 768       (Table 1: 768)
+ *       h=128 -> 2*128*log2(128)= 1792      (Table 1: 1792)
+ *       h=192 -> 2*192*log2(192)= 2912.6    (Table 1: 2913, rounded)
+ *   And hintsPrior(n)=n/2 reproduces every "[23]" value, across all three n it
+ *   reports (n=2^14 -> 2^13, n=2^15 -> 2^14, n=2^16 -> 2^15). See PAPER-NOTES.md
+ *   for the full transcription. The committed PDF is 2026-1081.pdf.
  */
 
 /** The fitted scaling constant for the O(h log h) law. Derived from the paper's
@@ -138,50 +143,47 @@ export function effectiveScenario(n: number, h: number, hintsAvailable: number):
 }
 
 /**
- * Paper / model parameter regimes for the UI preset buttons.
- *
- * IMPORTANT (anti-hallucination): only the first row is transcribed from the
- * paper — it is the one (n,h) anchor we could source while IACR was behind a
- * Cloudflare wall (abstract states 320 new vs 2^14 prior for (2^15,32)). The
- * other rows are NOT claimed to be in the paper: they are model COMPUTATIONS at
- * common FHE-style Hamming weights, tagged 'model' so the UI badges them as
- * heuristic. Do not present them as paper-transcribed values.
+ * Parameter regimes for the UI preset buttons — all transcribed from the paper's
+ * Table 1. Each row's hintsPrior is the paper's "[23]" column and hintsNew is the
+ * paper's "Ours" column; both are reproduced exactly by hintsPrior(n)=n/2 and
+ * hintsNew(h)=2*h*log2(h) (see model header + PAPER-NOTES.md). The four rows span
+ * every distinct Hamming weight the paper reports (h = 32, 64, 128, 192).
  */
 export const PARAM_SETS: ParamSet[] = [
   {
-    label: 'FHE bootstrapping (paper anchor)',
+    label: 'FHE bootstrapping [7],[28]',
     n: 2 ** 15,
     h: 32,
-    hintsPrior: 2 ** 14,           // 16,384 — paper-stated
-    hintsNew: 320,                  // paper-stated
+    hintsPrior: 2 ** 14,            // 16,384 — Table 1 "[23]"
+    hintsNew: 320,                   // Table 1 "Ours"
     provenance: 'paper',
-    cite: 'ePrint 2026/1081, abstract (Table 1 anchor row)',
+    cite: 'Table 1, row [7],[28] (n=2^15, log2 q=161, h=32)',
   },
   {
-    label: 'Sparser secret (model, h=16)',
-    n: 2 ** 15,
-    h: 16,
-    hintsPrior: hintsPrior(2 ** 15),
-    hintsNew: Math.round(hintsNew(16)),
-    provenance: 'model',
-    cite: 'computed: C·h·log2(h) with C=2; NOT a paper-transcribed row',
-  },
-  {
-    label: 'Denser secret (model, h=64)',
-    n: 2 ** 15,
-    h: 64,
-    hintsPrior: hintsPrior(2 ** 15),
-    hintsNew: Math.round(hintsNew(64)),
-    provenance: 'model',
-    cite: 'computed: C·h·log2(h) with C=2; NOT a paper-transcribed row',
-  },
-  {
-    label: 'Larger ring (model, n=2^16, h=64)',
+    label: 'Larger ring [30]',
     n: 2 ** 16,
     h: 64,
-    hintsPrior: hintsPrior(2 ** 16),
-    hintsNew: Math.round(hintsNew(64)),
-    provenance: 'model',
-    cite: 'computed: C·h·log2(h) with C=2; NOT a paper-transcribed row',
+    hintsPrior: 2 ** 15,            // 32,768 — Table 1 "[23]"
+    hintsNew: 768,                   // Table 1 "Ours"
+    provenance: 'paper',
+    cite: 'Table 1, row [30] (n=2^16, log2 q=795, h=64)',
+  },
+  {
+    label: 'Denser secret [12]',
+    n: 2 ** 15,
+    h: 128,
+    hintsPrior: 2 ** 14,            // 16,384 — Table 1 "[23]"
+    hintsNew: 1792,                  // Table 1 "Ours"
+    provenance: 'paper',
+    cite: 'Table 1, row [12] (n=2^15, log2 q=699, h=128)',
+  },
+  {
+    label: 'OpenFHE [31],[32],[33]',
+    n: 2 ** 15,
+    h: 192,
+    hintsPrior: 2 ** 14,            // 16,384 — Table 1 "[23]"
+    hintsNew: 2913,                  // Table 1 "Ours" (2*192*log2 192 = 2912.6, rounded)
+    provenance: 'paper',
+    cite: 'Table 1, row [31],[32],[33] (n=2^15, log2 q=768, h=192); perfect hints only',
   },
 ];

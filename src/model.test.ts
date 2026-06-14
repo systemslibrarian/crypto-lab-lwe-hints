@@ -2,8 +2,10 @@
  * model.test.ts — pins the paper-anchor invariants against regression.
  *
  * The whole demo's credibility rests on the model reproducing the paper's
- * reported hint counts. These tests guard the one anchor we could source from
- * ePrint 2026/1081 (IACR was Cloudflare-blocked; see Known Gaps / BUILD-NOTES.md).
+ * reported hint counts. These tests guard the model against EVERY row of Table 1
+ * in ePrint 2026/1081 (committed as 2026-1081.pdf): the "Ours" column across all
+ * four Hamming weights {32,64,128,192} and the "[23]" column across all three
+ * dimensions {2^14,2^15,2^16}.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +42,34 @@ describe('paper anchor: (n,h) = (2^15, 32)', () => {
   });
 });
 
+describe('Table 1 "Ours" column — every reported Hamming weight', () => {
+  // h -> paper "Ours" value (hint count this method needs)
+  const OURS: Array<[number, number]> = [
+    [32, 320],
+    [64, 768],
+    [128, 1792],
+    [192, 2913], // 2*192*log2(192) = 2912.6, paper rounds to 2913
+  ];
+  for (const [hw, ours] of OURS) {
+    it(`h=${hw} reproduces Ours=${ours}`, () => {
+      expect(Math.round(hintsNew(hw))).toBe(ours);
+    });
+  }
+});
+
+describe('Table 1 "[23]" column — every reported dimension (prior = n/2)', () => {
+  const PRIOR: Array<[number, number]> = [
+    [2 ** 14, 2 ** 13],
+    [2 ** 15, 2 ** 14],
+    [2 ** 16, 2 ** 15],
+  ];
+  for (const [dim, prior] of PRIOR) {
+    it(`n=2^${Math.log2(dim)} reproduces [23]=2^${Math.log2(prior)}`, () => {
+      expect(hintsPrior(dim)).toBe(prior);
+    });
+  }
+});
+
 describe('PARAM_SETS rows reproduce via the model functions', () => {
   for (const set of PARAM_SETS) {
     it(`${set.label}: hintsNew(${set.h}) matches stored value`, () => {
@@ -55,13 +85,20 @@ describe('PARAM_SETS rows reproduce via the model functions', () => {
     });
   }
 
-  it('exactly one row is transcribed from the paper (provenance="paper")', () => {
-    const paperRows = PARAM_SETS.filter((s) => s.provenance === 'paper');
-    expect(paperRows).toHaveLength(1);
-    expect(paperRows[0].n).toBe(2 ** 15);
-    expect(paperRows[0].h).toBe(32);
-    expect(paperRows[0].hintsNew).toBe(320);
-    expect(paperRows[0].hintsPrior).toBe(2 ** 14);
+  it('every PARAM_SETS row is transcribed from Table 1 (provenance="paper")', () => {
+    expect(PARAM_SETS.every((s) => s.provenance === 'paper')).toBe(true);
+  });
+
+  it('includes the abstract anchor (2^15, 32) -> 320 / 16,384', () => {
+    const anchor = PARAM_SETS.find((s) => s.n === 2 ** 15 && s.h === 32);
+    expect(anchor).toBeDefined();
+    expect(anchor!.hintsNew).toBe(320);
+    expect(anchor!.hintsPrior).toBe(2 ** 14);
+  });
+
+  it('covers all four Hamming weights the paper reports', () => {
+    const weights = PARAM_SETS.map((s) => s.h).sort((a, b) => a - b);
+    expect(weights).toEqual([32, 64, 128, 192]);
   });
 });
 
