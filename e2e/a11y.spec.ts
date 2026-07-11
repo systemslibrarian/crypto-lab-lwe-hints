@@ -1,0 +1,69 @@
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * WCAG regression gate. Scans the full page — every <details> expanded, every
+ * tabbed panel revealed, animations neutralized — in both the dark (default)
+ * and light themes. A green run here is what actually ships to Pages.
+ */
+
+const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+
+async function revealAll(page: Page): Promise<void> {
+  // Open native disclosure widgets.
+  await page.evaluate(() => {
+    for (const details of Array.from(document.querySelectorAll('details'))) {
+      (details as HTMLDetailsElement).open = true;
+    }
+    // Un-hide anything hidden by attribute so its contents are auditable.
+    for (const el of Array.from(document.querySelectorAll('[hidden]'))) {
+      el.removeAttribute('hidden');
+    }
+    for (const el of Array.from(document.querySelectorAll('[aria-hidden="true"]'))) {
+      // Leave decorative shared-header/aria-hidden marquee elements alone only
+      // if they carry no auditable content; safest is to reveal all so text
+      // contrast is checked, matching what a user with a screen magnifier sees.
+      el.removeAttribute('aria-hidden');
+    }
+  });
+
+  // Exercise the Perfect/Approximate tab pair so both injected panels render.
+  const tabs = page.locator('.he-tab');
+  const tabCount = await tabs.count();
+  for (let i = 0; i < tabCount; i++) {
+    await tabs.nth(i).click();
+  }
+}
+
+async function neutralizeMotion(page: Page): Promise<void> {
+  await page.addStyleTag({
+    content: `*,*::before,*::after{transition:none!important;animation:none!important;opacity:1!important}`,
+  });
+}
+
+async function scan(page: Page): Promise<void> {
+  const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+  const summary = results.violations.map((v) => ({
+    id: v.id,
+    impact: v.impact,
+    help: v.help,
+    nodes: v.nodes.map((n) => n.target.join(' ')).slice(0, 5),
+  }));
+  expect(summary).toEqual([]);
+}
+
+test('no WCAG A/AA violations in dark theme', async ({ page }) => {
+  await page.goto('.');
+  await revealAll(page);
+  await neutralizeMotion(page);
+  await scan(page);
+});
+
+test('no WCAG A/AA violations in light theme', async ({ page }) => {
+  await page.goto('.');
+  await page.locator('#cl-theme-toggle').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await revealAll(page);
+  await neutralizeMotion(page);
+  await scan(page);
+});
