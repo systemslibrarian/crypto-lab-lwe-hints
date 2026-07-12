@@ -140,22 +140,20 @@
   })();
 </script>
 <!-- END crypto-lab shared header -->
-    <header class="site-header">
-      <div class="header-inner">
-        <span class="kicker">crypto-lab</span>
-        <h1 class="site-title">LWE Hints</h1>
-        <p class="site-sub">How cheaply does a sparse LWE secret leak?</p>
-      </div>
-      <button
-        id="theme-toggle"
-        class="theme-toggle"
-        type="button"
-        aria-label="Switch to light theme"
-        title="Toggle theme"
-      >
-        🌙
-      </button>
-    </header>
+    <!-- Lab's own theme toggle: hidden (the shared topbar's #cl-theme-toggle
+         replaces it) but kept in the DOM so main.ts's setupThemeToggle wiring
+         stays intact. -->
+    <button
+      id="theme-toggle"
+      class="theme-toggle"
+      type="button"
+      aria-label="Switch to light theme"
+      title="Toggle theme"
+      hidden
+      aria-hidden="true"
+    >
+      🌙
+    </button>
 
     <!-- Persistent headline: the emotional center, kept visible while scrolling. -->
     <div class="sticky-headline" id="sticky-headline" aria-hidden="true">
@@ -166,6 +164,18 @@
     </div>
 
     <main>
+      <header class="cl-hero">
+        <div class="cl-hero-main">
+          <h1 class="cl-hero-title">LWE Hints</h1>
+          <p class="cl-hero-sub">sparse-ternary LWE · ePrint 2026/1081</p>
+          <p class="cl-hero-desc">Estimate how many side-channel hints recover a sparse-ternary LWE secret, comparing the new O(h·log₂h) hint budget against the prior ≈n/2 baseline across the paper's (n, h) regimes.</p>
+        </div>
+        <aside class="cl-hero-why" aria-label="Why it matters">
+          <span class="cl-hero-why-label">WHY IT MATTERS</span>
+          <p class="cl-hero-why-text">Recovery cost scales with a secret's Hamming weight, not its dimension. Sparse-secret FHE deployments with any leakage path are far more exposed than an O(n) threshold suggests — raising h and masking leakage becomes part of the threat model.</p>
+        </aside>
+      </header>
+
       <!-- 1. TL;DR -->
       <section class="card tldr" id="tldr">
         <h2>TL;DR</h2>
