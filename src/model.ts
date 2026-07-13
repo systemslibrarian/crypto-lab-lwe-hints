@@ -181,6 +181,66 @@ export function effectiveScenario(n: number, h: number, hintsAvailable: number):
 }
 
 /**
+ * ---------------------------------------------------------------------------
+ * WHY log h? — the position-identification cost (pure, deterministic helpers).
+ * ---------------------------------------------------------------------------
+ * The headline law is O(h·log h), NOT O(h). A learner reasonably asks: h unknowns
+ * should need ~h equations — where does the extra log h come from?
+ *
+ * The answer is that the attacker does not know WHICH of the n coordinates are
+ * the h nonzero ones. Pinning down each nonzero POSITION is a search: a "locating"
+ * hint that answers "does this nonzero lie in this subset?" halves the ambiguity,
+ * so isolating one position among n candidates costs ~log2(n) such hints, and the
+ * whole support (all h positions) costs on the order of h·log h — the classic
+ * coupon-collector / group-testing overhead. VALUES are then cheap; POSITIONS are
+ * what carry the log factor.
+ *
+ * `bisectSteps` returns the deterministic set of candidate positions still
+ * ambiguous after `step` locating hints, for a single nonzero we are binary-
+ * searching for. Each step keeps the half of the current window that contains the
+ * target — this is the auditable engine behind the interactive "watch positions
+ * get pinned down" exhibit. It is illustrative pedagogy (a clean binary search),
+ * not a re-run of the paper's estimator.
+ */
+export interface BisectState {
+  /** Candidate positions still consistent with the locating hints so far. */
+  candidates: number[];
+  /** True once the window has collapsed to the single true position. */
+  resolved: boolean;
+  /** Minimum locating hints to fully isolate a target among `n` positions. */
+  worstCase: number;
+}
+
+/**
+ * Simulate `step` halving ("locating") hints narrowing an initial window of
+ * `n` positions down toward the true nonzero at index `target`. Deterministic:
+ * same (n, target, step) always yields the same candidate window. Models the
+ * position-identification search that produces the log-factor in O(h·log h).
+ */
+export function bisectSteps(n: number, target: number, step: number): BisectState {
+  requireInteger('n', n);
+  requireInteger('target', target);
+  requireInteger('step', step);
+  if (n < 1) throw new Error(`n must be >= 1 (got ${n})`);
+  if (target < 0 || target >= n) throw new Error(`target out of range (got ${target}, n=${n})`);
+  if (step < 0) throw new Error(`step must be >= 0 (got ${step})`);
+
+  let lo = 0;
+  let hi = n; // half-open window [lo, hi)
+  const worstCase = Math.max(0, Math.ceil(Math.log2(n)));
+  const applied = Math.min(step, worstCase);
+  for (let s = 0; s < applied; s++) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    // Locating hint answers "is the target in the lower half?"; keep that half.
+    if (target < mid) hi = mid;
+    else lo = mid;
+  }
+  const candidates: number[] = [];
+  for (let i = lo; i < hi; i++) candidates.push(i);
+  return { candidates, resolved: candidates.length <= 1, worstCase };
+}
+
+/**
  * Parameter regimes for the UI preset buttons — all transcribed from the paper's
  * Table 1. Each row's hintsPrior is the paper's "[23]" column and hintsNew is the
  * paper's "Ours" column; both are reproduced exactly by hintsPrior(n)=n/2 and

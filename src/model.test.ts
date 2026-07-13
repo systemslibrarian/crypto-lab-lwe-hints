@@ -17,6 +17,7 @@ import {
   reductionFactor,
   effectiveScenario,
   riskVerdict,
+  bisectSteps,
   MANAGEABLE_FRACTION,
   PARAM_SETS,
 } from './model';
@@ -209,6 +210,50 @@ describe('riskVerdict bands (Safe / Manageable / Dangerous)', () => {
     const dangerous = effectiveScenario(2 ** 15, 32, 320); // exactly the budget
     expect(dangerous.verdict).toBe('dangerous');
     expect(dangerous.status).toBe('recoverable');
+  });
+});
+
+describe('bisectSteps: position-identification (the log-h factor)', () => {
+  it('step 0 leaves the full window ambiguous', () => {
+    const s = bisectSteps(16, 5, 0);
+    expect(s.candidates.length).toBe(16);
+    expect(s.resolved).toBe(false);
+  });
+
+  it('each hint at least halves the candidate window', () => {
+    let prev = bisectSteps(16, 5, 0).candidates.length;
+    for (let step = 1; step <= 4; step++) {
+      const cur = bisectSteps(16, 5, step).candidates.length;
+      expect(cur).toBeLessThanOrEqual(Math.ceil(prev / 2));
+      prev = cur;
+    }
+  });
+
+  it('log2(n) hints fully isolate the target among n positions', () => {
+    for (const n of [8, 16, 32, 64]) {
+      const worst = Math.ceil(Math.log2(n));
+      for (let target = 0; target < n; target++) {
+        const s = bisectSteps(n, target, worst);
+        expect(s.resolved).toBe(true);
+        expect(s.candidates).toEqual([target]);
+        expect(s.worstCase).toBe(worst);
+      }
+    }
+  });
+
+  it('the surviving window always still contains the true target', () => {
+    for (let step = 0; step <= 4; step++) {
+      const s = bisectSteps(16, 11, step);
+      expect(s.candidates).toContain(11);
+    }
+  });
+
+  it('is deterministic and guards its inputs', () => {
+    expect(bisectSteps(16, 5, 2).candidates).toEqual(bisectSteps(16, 5, 2).candidates);
+    expect(() => bisectSteps(16, 16, 1)).toThrow();
+    expect(() => bisectSteps(16, -1, 1)).toThrow();
+    expect(() => bisectSteps(0, 0, 1)).toThrow();
+    expect(() => bisectSteps(16, 5, -1)).toThrow();
   });
 });
 

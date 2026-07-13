@@ -262,6 +262,17 @@
           threshold cares about n; the new one mostly cares about h.</em>
         </p>
 
+        <p class="baseline-note">
+          <strong>Why is the prior baseline <code>n/2</code>?</strong> Prior work
+          treated <code>s</code> as a <em>generic</em> n-dimensional secret and
+          ignored its sparsity, so it needed roughly <em>one hint per two
+          coordinates</em> — <code>n/2</code> — no matter how few were actually
+          nonzero. This paper's advance is refusing to pay for the zeros: it charges
+          only for the <code>h</code> nonzeros (and the <code>log</code> cost of
+          locating them). That is why the gap between the two lines <em>is</em> the
+          headline — it is exactly what sparsity buys back.
+        </p>
+
         <div class="presets" id="presets" role="group" aria-label="Paper / model parameter regimes">
           <!-- preset buttons injected by main.ts -->
         </div>
@@ -281,6 +292,35 @@
       <!-- 4. Mechanism explainer -->
       <section class="card" id="mechanism">
         <h2>How it works</h2>
+
+        <!-- Newcomer on-ramp: what LWE even is, so 'hints about s' has a home. -->
+        <details class="primer" id="lwe-primer" open>
+          <summary>New to LWE? Start here — what is the attacker even holding?</summary>
+          <p>
+            <strong>LWE (Learning With Errors)</strong> is the hard problem under
+            lattice crypto and FHE. The attacker already has a big pile of
+            <em>noisy linear equations</em> in the secret:
+          </p>
+          <p class="primer-eq"><code>A·s + e = b</code></p>
+          <p>
+            Here <code>A</code> and <code>b</code> are <em>known</em> (many rows of
+            them), <code>s</code> is the secret vector they want, and <code>e</code>
+            is small random <em>noise</em> added to every equation. Without the
+            noise this is just linear algebra — you would solve for <code>s</code>
+            in a heartbeat. The noise <code>e</code> is exactly what makes LWE hard:
+            it smears every equation just enough that no efficient solver is known.
+          </p>
+          <p>
+            A <strong>side-channel hint</strong> is an <em>extra, cleaner equation
+            about <code>s</code></em> that leaks out of the hardware — not from the
+            math, but from power draw, timing, or EM while the device computes with
+            <code>s</code>. Each hint is one more constraint, and (unlike the LWE
+            rows) it can be noise-free or only lightly noisy. The whole question of
+            this demo is: <strong>how many such hints does it take to finish off
+            <code>s</code>?</strong>
+          </p>
+        </details>
+
         <p>
           An LWE secret here is a <strong>sparse ternary</strong> vector
           <code>s ∈ {−1, 0, +1}ⁿ</code> with only <code>h</code> nonzero entries
@@ -326,9 +366,11 @@
           <p class="he-equation" id="he-equation"><!-- equation injected --></p>
           <p class="he-note muted" id="he-note"><!-- per-kind note injected --></p>
           <p class="he-takeaway">
-            Stack ~<code>h·log₂h</code> such equations and the <code>h</code> unknowns are
-            pinned down. That is the whole game — and why the budget scales with
-            <code>h</code>, not <code>n</code>.
+            Stack enough such equations and the <code>h</code> unknowns get pinned
+            down. But <strong>how many is “enough”?</strong> Not just <code>h</code> —
+            it is <code>h·log₂h</code>, and that extra <code>log₂h</code> is the whole
+            surprise. The next panel shows where it hides: the attacker must also find
+            <em>which</em> coordinates are nonzero.
           </p>
         </div>
 
@@ -344,6 +386,52 @@
           ones. The work scales with the <em>information content</em> of the secret
           (<code>≈ h·log₂h</code>), not its ambient dimension <code>n</code>. When
           <code>h ≪ n</code>, <code>O(h log h)</code> crushes <code>O(n)</code>.
+        </p>
+      </section>
+
+      <!-- 4a. WHY log h? — the position-identification interactive (the crux) -->
+      <section class="card whylog" id="whylog">
+        <h2>Why <code>h·log₂h</code>, not just <code>h</code>?</h2>
+        <p>
+          Here is the puzzle. There are <code>h</code> unknown nonzero values, so
+          <code>h</code> equations should pin them down — that would be <code>O(h)</code>.
+          Yet the law is <code>O(h·log₂h)</code>. Where does the extra
+          <code>log₂h</code> come from? <strong>From not knowing which coordinates
+          are the nonzero ones.</strong> Finding a value is cheap; finding its
+          <em>position</em> is a search.
+        </p>
+        <p>
+          Below is a tiny secret: <strong>h = 3 nonzeros hidden among n = 16</strong>
+          coordinates. Add <em>locating hints</em> one at a time. Each locating hint
+          answers a single yes/no question — “does a nonzero lie in this half?” — and
+          rules out half the remaining candidates. Watch the
+          <span class="wl-legend-amb">ambiguous</span> cells (positions that could
+          still be a nonzero) shrink. Only when a cell is the <em>last one
+          standing</em> is its position <span class="wl-legend-found">pinned
+          down</span>.
+        </p>
+
+        <div class="wl-controls">
+          <button type="button" class="wl-btn" id="wl-add">+ Add a locating hint</button>
+          <button type="button" class="wl-btn wl-btn-ghost" id="wl-reset">Reset</button>
+          <span class="wl-count muted" id="wl-count" aria-live="polite"></span>
+        </div>
+
+        <div class="wl-strip" id="wl-strip" role="img"
+          aria-label="Sixteen coordinates, three secretly nonzero. As locating hints are added, ambiguous candidate positions are progressively ruled out until each nonzero position is uniquely pinned down."></div>
+
+        <p class="wl-status" id="wl-status" aria-live="polite"></p>
+
+        <p class="wl-takeaway">
+          <strong>That is the <code>log₂h</code>.</strong> Isolating one nonzero
+          position takes about <code>log₂</code>(window) yes/no hints — a binary
+          search — and you must do it for each of the <code>h</code> nonzeros. So the
+          total is not <code>h</code> but <code>≈ h·log₂h</code>: <code>h</code> for
+          the values, times a <code>log</code> factor to <em>locate</em> them. (Real
+          recovery interleaves value and position information rather than separating
+          them this cleanly — this is the intuition, not the exact protocol — but the
+          log factor is genuinely the cost of position-finding: a coupon-collector /
+          group-testing overhead.)
         </p>
       </section>
 
@@ -399,14 +487,26 @@
 
         <div class="calc-grid">
           <label class="calc-row">
-            <span>Hints leaked per operation</span>
-            <input type="number" id="calc-rate" min="0" step="0.001" value="0.05" />
+            <span>Hints leaked per operation
+              <span class="calc-hint muted">illustrative: a well-masked NTT might leak
+              ~0.005; an unprotected DPA-friendly multiply ~0.1–0.3. Presets below
+              set realistic anchors.</span>
+            </span>
+            <input type="number" id="calc-rate" min="0" step="0.001" value="0.05"
+              aria-describedby="calc-rate-help" />
           </label>
           <label class="calc-row">
-            <span>Operations performed</span>
+            <span>Operations (secret-dependent traces captured)</span>
             <input type="number" id="calc-ops" min="0" step="1" value="5000" />
           </label>
         </div>
+        <p class="calc-help muted" id="calc-rate-help">
+          The <strong>leak rate</strong> is not from the paper — it depends entirely
+          on your hardware and countermeasures (see <a href="#origins">Where hints
+          come from</a>). It is the knob a defender actually controls: masking, shuffling,
+          and rate-limiting all push it toward zero. The scenario buttons above set it to
+          plausible values so the verdict tracks a real deployment, not an arbitrary number.
+        </p>
 
         <!-- Prominent Safe / Manageable / Dangerous verdict (the headline of this card) -->
         <div class="calc-verdict" id="calc-verdict" aria-live="polite"></div>

@@ -34,6 +34,32 @@ Every number is auditable in [`src/model.ts`](src/model.ts) and
 > across `n ∈ {2¹⁴, 2¹⁵, 2¹⁶}`. Full transcription in `PAPER-NOTES.md`; remaining
 > assumptions in the in-app **Known Gaps** panel and `BUILD-NOTES.md`.
 
+## Exhibits
+
+The page is a guided path from "what is even leaking?" to "why is the cost
+`h·log₂h` and not just `h`?":
+
+1. **TL;DR + guided collapse** — the headline (`320` vs `16,384`) and a one-click
+   sweep that drops `h` and watches the new threshold collapse.
+2. **Live readout** — `(n, h)` → hint counts and the reduction factor.
+3. **Interactive chart** — the new `C·h·log₂h` curve vs the prior `n/2` baseline,
+   with the reduction factor drawn as the annotated vertical **gap** between the
+   two lines, and a plain-language note on *why* the prior baseline was `n/2`.
+4. **How it works** — a collapsible **"What is LWE?" primer** (the noisy system
+   `A·s + e = b` a hint augments), the sparse-secret strip reworked to make
+   `h ≪ n` legible as *"in a window this size you'd expect ~0 nonzeros,"* and a
+   fixed, hand-checkable worked hint (perfect vs approximate on the *same*
+   instance).
+5. **Why `h·log₂h`, not just `h`?** — an interactive that hides `h = 3` nonzeros
+   among `n = 16` and lets you add *locating hints* one at a time, watching
+   ambiguous candidate positions collapse. It makes the `log h` factor concrete:
+   it is the cost of finding *which* coordinates are nonzero, not their values.
+6. **Where hints come from** + **threat-scenario calculator** — real leakage
+   channels (DPA / cache / EM) and a Safe / Manageable / Dangerous verdict, with
+   the leak-rate knob annotated with realistic anchors.
+7. **Self-check, misconceptions, parameters & sources, known gaps** — honesty
+   framing: this estimator runs *no attack*.
+
 ## When to Use It
 
 - To understand **why sparse secrets are a liability** under side-channel leakage.

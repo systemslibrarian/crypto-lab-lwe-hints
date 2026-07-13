@@ -11,6 +11,7 @@ import {
   hintsPrior,
   reductionFactor,
   effectiveScenario,
+  bisectSteps,
   PARAM_SETS,
 } from './model';
 
@@ -353,9 +354,49 @@ function draw(): void {
     ctx.fillText(`h=${set.h}`, px + 9, py - 6);
   }
 
-  // current-selection marker on the new curve (drawn on top)
+  // Reduction-factor gap: a vertical double-headed line from the new curve up to
+  // the prior baseline at the current h, annotated with the ratio. This ties the
+  // headline number (e.g. 51x) to the GEOMETRY of the distance between the lines.
   const cx = xPix(h);
   const cy = yPix(hintsNew(h));
+  const gapTopY = priorY; // dashed baseline
+  const gapBotY = cy; // new curve
+  if (Math.abs(gapBotY - gapTopY) > 14) {
+    ctx.strokeStyle = cAnchor;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(cx, gapTopY);
+    ctx.lineTo(cx, gapBotY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // little end caps
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, gapTopY);
+    ctx.lineTo(cx + 4, gapTopY);
+    ctx.moveTo(cx - 4, gapBotY);
+    ctx.lineTo(cx + 4, gapBotY);
+    ctx.stroke();
+    // ratio label at the middle of the gap
+    const r = reductionFactor(n(), h);
+    const label = Number.isFinite(r) ? `${r.toFixed(0)}× fewer` : '∞× fewer';
+    ctx.font = 'bold 12px sans-serif';
+    const midY = (gapTopY + gapBotY) / 2;
+    // keep the label on-canvas: flip to the left if too close to the right edge
+    const onRight = cx < padL + plotW - 90;
+    ctx.textAlign = onRight ? 'left' : 'right';
+    const lx = onRight ? cx + 8 : cx - 8;
+    // subtle backing so the label stays legible over gridlines
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = cssVar('--bg-elev-2');
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(onRight ? lx - 2 : lx - tw - 2, midY - 9, tw + 4, 16);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = cAnchor;
+    ctx.fillText(label, lx, midY + 4);
+  }
+
+  // current-selection marker on the new curve (drawn on top)
   ctx.fillStyle = cNew;
   ctx.beginPath();
   ctx.arc(cx, cy, 5, 0, Math.PI * 2);
@@ -376,6 +417,12 @@ function draw(): void {
 // ---------------------------------------------------------------------------
 // Render: sparse-secret strip — makes "h of n nonzero" concrete
 // ---------------------------------------------------------------------------
+// A fixed, honest WINDOW of coordinates. Rather than scaling h/n down to the
+// whole strip (which lights ~1 cell at the anchor and reads as "broken"), we show
+// one representative window of the secret and light the *expected* number of
+// nonzeros for that window — usually a fraction of one — so the drama is "in a
+// window this size you'd expect almost no nonzero at all." Emptiness becomes the
+// message, not an artifact.
 function drawSecret(): void {
   const canvas = el<HTMLCanvasElement>('secret-strip');
   const ctx = canvas.getContext('2d');
@@ -386,14 +433,19 @@ function drawSecret(): void {
 
   const cols = 90;
   const rows = 6;
-  const cells = cols * rows;
+  const cells = cols * rows; // 540
   const pad = 6;
   const gap = 1;
   const cw = (W - 2 * pad) / cols;
   const ch = (Hc - 2 * pad) / rows;
 
-  // how many of the displayed cells to light up (scaled from real h/n), >=1
-  const lit = Math.max(1, Math.min(cells, Math.round((h / n()) * cells)));
+  // Expected nonzeros in a window of this many coordinates, at the real density h/n.
+  const density = h / n();
+  const expected = density * cells;
+  // Light up round(expected) cells, but always show at least one so the learner
+  // sees WHAT a nonzero looks like. The caption makes the "expected < 1" case
+  // explicit so the single lit cell is never mistaken for the true rate.
+  const lit = Math.max(1, Math.min(cells, Math.round(expected)));
   const litSet = new Set<number>();
   for (let k = 0; k < lit; k++) {
     litSet.add(Math.floor((k + 0.5) * (cells / lit)));
@@ -419,12 +471,19 @@ function drawSecret(): void {
   }
   ctx.globalAlpha = 1;
 
-  const pct = (h / n()) * 100;
+  const pct = density * 100;
   const pctStr = pct < 0.01 ? '<0.01%' : `${pct.toPrecision(2)}%`;
+  const expStr = expected < 1 ? expected.toPrecision(2) : Math.round(expected).toLocaleString('en-US');
+  const drama =
+    expected < 1
+      ? `In a ${cells}-coordinate window like this you'd expect only ~${expStr} nonzero — ` +
+        `usually none at all. The one cell lit here is drawn so you can see what a nonzero ` +
+        `looks like; the true density is far sparser. That is how extreme h ≪ n is.`
+      : `In a ${cells}-coordinate window like this you'd expect ~${expStr} nonzeros.`;
   el('secret-caption').textContent =
-    `h = ${h} nonzero coordinates out of n = ${fmt(n())} (${pctStr}). ` +
-    `Highlighted = ±1, dim = 0. Only the highlighted entries matter — that is ` +
-    `why work scales with h, not n. (Shown scaled to ${cells} cells.)`;
+    `h = ${h} nonzero of n = ${fmt(n())} total (${pctStr} of all coordinates are nonzero). ` +
+    `Highlighted = ±1, dim = 0. ${drama} Only the highlighted entries carry information — ` +
+    `which is why work scales with h, not n.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -649,6 +708,94 @@ function runAha(): void {
   requestAnimationFrame(frame);
 }
 
+// ---------------------------------------------------------------------------
+// "Why log h?" — position-identification interactive.
+// A fixed tiny secret (h=3 nonzeros among n=16). Each "locating hint" is one
+// yes/no bisection step applied to EVERY not-yet-resolved nonzero at once. The
+// learner watches ambiguous candidate cells collapse — SEEING that finding the
+// POSITIONS (not the values) is the log-factor cost. Deterministic: positions and
+// the search are fixed, all narrowing comes from ./model bisectSteps.
+// ---------------------------------------------------------------------------
+const WL_N = 16;
+const WL_TARGETS = [2, 9, 13]; // the h=3 secretly-nonzero positions (fixed)
+const WL_SIGNS = ['+1', '−1', '+1']; // ternary values, revealed once located
+let wlStep = 0;
+
+function wlWorstCase(): number {
+  return Math.ceil(Math.log2(WL_N)); // 4 hints to isolate one position among 16
+}
+
+function renderWhyLog(): void {
+  const strip = el('wl-strip');
+  const status = el('wl-status');
+  const count = el('wl-count');
+
+  // For each still-ambiguous target, the surviving candidate window at this step.
+  const states = WL_TARGETS.map((t) => bisectSteps(WL_N, t, wlStep));
+
+  // A position is "ambiguous" if it is inside some target's window that has NOT
+  // yet collapsed to a single cell. It is "found" if it is a target whose window
+  // has collapsed to exactly it.
+  const ambiguous = new Set<number>();
+  const found = new Set<number>();
+  states.forEach((s, i) => {
+    if (s.resolved) found.add(WL_TARGETS[i]);
+    else for (const c of s.candidates) ambiguous.add(c);
+  });
+
+  let html = '';
+  for (let i = 0; i < WL_N; i++) {
+    const ti = WL_TARGETS.indexOf(i);
+    let cls = 'wl-cell';
+    let label = '?';
+    if (found.has(i)) {
+      cls += ' wl-found';
+      label = WL_SIGNS[ti]; // reveal the ternary value once the position is pinned
+    } else if (ambiguous.has(i)) {
+      cls += ' wl-amb';
+      label = '?';
+    } else {
+      cls += ' wl-ruled'; // ruled out — provably zero here
+      label = '0';
+    }
+    html += `<span class="${cls}"><span class="wl-idx">${i}</span><span class="wl-val">${label}</span></span>`;
+  }
+  strip.innerHTML = html;
+
+  const foundCount = found.size;
+  const worst = wlWorstCase();
+  count.textContent = `Locating hints used: ${wlStep} · positions pinned down: ${foundCount} of ${WL_TARGETS.length}`;
+
+  if (wlStep === 0) {
+    status.textContent =
+      `Zero hints so far: every one of the ${WL_N} coordinates is still a suspect — any could be one of the ${WL_TARGETS.length} nonzeros. Add a locating hint to start ruling positions out.`;
+  } else if (foundCount < WL_TARGETS.length) {
+    const ambCount = ambiguous.size;
+    status.textContent =
+      `After ${wlStep} locating hint${wlStep === 1 ? '' : 's'}: ${ambCount} coordinate${ambCount === 1 ? '' : 's'} still ambiguous, ${foundCount} position${foundCount === 1 ? '' : 's'} pinned down. Each hint roughly halves the suspects — a binary search per nonzero.`;
+  } else {
+    status.textContent =
+      `Done in ${wlStep} locating hints (~log₂${WL_N} = ${worst} per nonzero). All ${WL_TARGETS.length} positions found — and only NOW are the ternary values (${WL_SIGNS.join(', ')}) worth reading off. Locating the positions was the expensive part: that is the log₂h.`;
+  }
+
+  el<HTMLButtonElement>('wl-add').disabled = foundCount === WL_TARGETS.length;
+}
+
+function setupWhyLog(): void {
+  const add = el<HTMLButtonElement>('wl-add');
+  const reset = el<HTMLButtonElement>('wl-reset');
+  const max = wlWorstCase();
+  add.addEventListener('click', () => {
+    if (wlStep < max) wlStep += 1;
+    renderWhyLog();
+  });
+  reset.addEventListener('click', () => {
+    wlStep = 0;
+    renderWhyLog();
+  });
+  renderWhyLog();
+}
+
 function setupSelfCheck(): void {
   const opts = Array.from(document.querySelectorAll('.sc-opt')) as HTMLButtonElement[];
   const fb = el('sc-feedback');
@@ -680,6 +827,7 @@ function init(): void {
   setupChartClick();
   setupSelfCheck();
   setupHintEquation();
+  setupWhyLog();
   el<HTMLButtonElement>('aha-btn').addEventListener('click', runAha);
 
   el<HTMLInputElement>('h-slider').addEventListener('input', (e) => {
