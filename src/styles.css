@@ -485,6 +485,65 @@ figcaption { margin-top: 0.5rem; font-size: 0.85rem; }
 .calc-result.recoverable { border-left-color: var(--danger); }
 .calc-result.not-yet { border-left-color: var(--ok); }
 
+/* ---- Attack / GAA / profile readouts ---- */
+.atk-grid {
+  display: grid;
+  grid-template-columns: minmax(11rem, 18rem) 1fr;
+  gap: 0.5rem 1rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.atk-grid dt { color: var(--text-muted); font-weight: 600; }
+.atk-grid dd { margin: 0; }
+.sweep-ok { color: var(--ok); font-weight: 700; }
+.sweep-bad { color: var(--danger); font-weight: 700; }
+.atk-sweep-table caption { text-align: left; padding-bottom: 0.5rem; }
+
+.calc-row select {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--control-border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  min-height: 44px;
+}
+.calc-row--inline { max-width: 16rem; margin: 0.75rem 0; }
+.scenario-btn.active {
+  border-color: var(--accent);
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  font-weight: 700;
+}
+
+.calc-sub { margin-top: 2rem; }
+.profile-label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.4rem; }
+.profile-input {
+  width: 100%;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--control-border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.profile-error {
+  border-left: 3px solid var(--warn);
+  background: var(--bg-elev-2);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.88rem;
+  margin: 0.6rem 0;
+}
+
+@media (max-width: 640px) {
+  .atk-grid { grid-template-columns: 1fr; }
+  .atk-grid dd { margin-bottom: 0.4rem; }
+}
+
 /* ---- FAQ ---- */
 details {
   border: 1px solid var(--border);

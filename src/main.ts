@@ -11,9 +11,13 @@ import {
   hintsPrior,
   reductionFactor,
   effectiveScenario,
+  riskVerdict,
   bisectSteps,
   PARAM_SETS,
 } from './model';
+import { recoverSecret, sweepHammingWeights } from './attack';
+import { observeGaa, probeVariance, type GaaObservation } from './gaa';
+import { parseLeakageProfile, profileOutcome } from './profile';
 
 // ---------------------------------------------------------------------------
 // Theme toggle (Part A) — self-contained, writes localStorage['theme'].
@@ -42,7 +46,11 @@ function setupThemeToggle(): void {
       /* ignore storage failures */
     }
     apply(now);
-    draw(); // chart colors are theme-derived
+    // Every canvas takes its colours from CSS custom properties, so all three
+    // have to be repainted, not just the first one.
+    draw();
+    renderGaa();
+    renderProfile();
   });
 }
 
@@ -605,6 +613,9 @@ function renderLive(): void {
   renderVerify();
   drawSecret();
   draw();
+  // The learner's profile is measured against C·h·log₂h, so moving h moves the
+  // line it has to cross — the whole point of letting them supply the profile.
+  renderProfile();
 }
 
 function renderAll(): void {
@@ -818,6 +829,380 @@ function setupSelfCheck(): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Exhibit: the attack, actually run.
+// ---------------------------------------------------------------------------
+// Every string written below is read off the RecoveryResult that recoverSecret()
+// just produced. The verdict line in particular is derived from exactMatch and
+// the residual check, never written ahead of them.
+
+function runAttack(): void {
+  const atkN = Number(el<HTMLSelectElement>('atk-n').value);
+  const atkH = Number(el<HTMLSelectElement>('atk-h').value);
+  const seed = Math.max(1, Math.floor(Number(el<HTMLInputElement>('atk-seed').value) || 1));
+  const r = recoverSecret(atkN, atkH, seed);
+
+  el('atk-instance').textContent =
+    `n = ${r.n}, q = ${r.q}, 48 LWE samples, |e| ≤ ${r.errorBound}, ` +
+    `secret weight h = ${r.h} · seed ${r.seed}`;
+  el('atk-support').textContent =
+    `${r.supportHints} hints of adaptive binary splitting → ` +
+    `${r.foundSupport.length} position${r.foundSupport.length === 1 ? '' : 's'} ` +
+    `${r.supportExact ? 'matching the planted support exactly' : 'NOT matching the planted support'}` +
+    (r.falseNegatives > 0
+      ? ` · ${r.falseNegatives} group test(s) returned 0 by chance (probability 1/q each)`
+      : '');
+  el('atk-values').textContent =
+    `${r.valueHints} hints, then Gaussian elimination over GF(${r.q}) on a ` +
+    `${r.foundSupport.length}×${r.foundSupport.length} system`;
+  el('atk-total').textContent =
+    `${fmt(r.totalHints)} hints · prior-work threshold n/2 = ${fmt(r.priorHints)} · ` +
+    `this procedure's own prediction h·⌈log₂(n/h)⌉ + h = ${fmt(r.groupTestingPrediction)} · ` +
+    `the paper's estimator for this h = ${fmt(r.estimatorHints)} (a different method — shown for scale only)`;
+  el('atk-match').textContent = r.exactMatch
+    ? `identical in all ${fmt(r.n)} coordinates`
+    : `MISMATCH — the recovered vector differs from the planted secret`;
+  el('atk-residual').textContent = `max |b − A·ŝ| = ${r.maxResidual} ${
+    r.maxResidual <= r.errorBound
+      ? `≤ ${r.errorBound}, so every sample is explained by the recovered secret`
+      : `> ${r.errorBound}, so it does not explain the samples`
+  }`;
+  el('atk-control').textContent =
+    `max |b − A·s'| = ${fmt(r.controlMaxResidual)} for a different weight-${r.h} secret — ` +
+    `${r.controlMaxResidual > r.errorBound ? 'rejected, as it must be' : 'unexpectedly accepted'}`;
+
+  const box = el('atk-verdict');
+  const ok = r.exactMatch && r.maxResidual <= r.errorBound && r.controlMaxResidual > r.errorBound;
+  box.className = `calc-result ${ok ? 'recoverable' : 'not-yet'}`;
+  box.innerHTML = ok
+    ? `<strong>SECRET RECOVERED.</strong> ${fmt(r.totalHints)} perfect hints — ` +
+      `${Math.round((r.priorHints / r.totalHints) * 10) / 10}× fewer than the prior ` +
+      `n/2 = ${fmt(r.priorHints)} threshold — reconstructed all ${r.h} nonzero coordinates of a ` +
+      `${r.n}-dimensional secret exactly, and the recovered vector explains every LWE sample ` +
+      `while a different sparse secret does not. <span class="badge badge-paper">computed, not estimated</span> ` +
+      `<span class="muted">(toy parameters: q = ${r.q}, n = ${r.n}.)</span>`
+    : `<strong>Recovery failed on this run.</strong> Reported as it happened rather than ` +
+      `re-rolled: support exact = ${r.supportExact}, exact match = ${r.exactMatch}, ` +
+      `false negatives = ${r.falseNegatives}.`;
+}
+
+function runSweep(): void {
+  const atkN = Number(el<HTMLSelectElement>('atk-n').value);
+  const seed = Math.max(1, Math.floor(Number(el<HTMLInputElement>('atk-seed').value) || 1));
+  const rows = sweepHammingWeights(atkN, [2, 4, 8, 16, 32], seed);
+  el('atk-sweep-body').innerHTML = rows
+    .map(
+      (r) =>
+        `<tr><td>${r.h}</td><td>${r.supportHints}</td><td>${r.valueHints}</td>` +
+        `<td><strong>${r.totalHints}</strong></td>` +
+        `<td>${(r.totalHints / r.h).toFixed(1)}</td>` +
+        `<td>${fmt(r.priorHints)}</td>` +
+        `<td class="${r.exactMatch ? 'sweep-ok' : 'sweep-bad'}">${r.exactMatch ? 'yes' : 'NO'}</td></tr>`,
+    )
+    .join('');
+}
+
+// ---------------------------------------------------------------------------
+// Exhibit: the GAA, measured.
+// ---------------------------------------------------------------------------
+const GAA_WEIGHTS = [1, 2, 8, 32, 64, 192];
+const GAA_SAMPLES = 4000;
+let gaaH = 32;
+
+function drawGaa(obs: GaaObservation): void {
+  const canvas = el<HTMLCanvasElement>('gaa-chart');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const W = canvas.width;
+  const H = canvas.height;
+  const padL = 60;
+  const padR = 20;
+  const padT = 18;
+  const padB = 44;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  ctx.clearRect(0, 0, W, H);
+
+  const yMax = Math.max(
+    1,
+    ...obs.histogram.map((b) => b.count),
+    ...obs.expected.map((b) => b.density),
+  );
+  const span = 4 * obs.predictedSd;
+  const xPix = (v: number) => padL + ((v + span) / (2 * span)) * plotW;
+  const yPix = (v: number) => padT + plotH - (v / yMax) * plotH;
+
+  const text = cssVar('--text');
+  const muted = cssVar('--text-muted');
+  const border = cssVar('--border');
+  const cBar = cssVar('--accent');
+  const cCurve = cssVar('--accent-2');
+
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, padT + plotH);
+  ctx.lineTo(padL + plotW, padT + plotH);
+  ctx.stroke();
+
+  const barW = plotW / obs.histogram.length;
+  ctx.fillStyle = cBar;
+  ctx.globalAlpha = 0.55;
+  for (const b of obs.histogram) {
+    const x = xPix(b.center) - barW / 2;
+    const y = yPix(b.count);
+    ctx.fillRect(x, y, Math.max(1, barW - 1), padT + plotH - y);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = cCurve;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  obs.expected.forEach((p, i) => {
+    const x = xPix(p.center);
+    const y = yPix(p.density);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  ctx.fillStyle = muted;
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  for (const frac of [-1, -0.5, 0, 0.5, 1]) {
+    const v = frac * span;
+    ctx.fillText(Math.round(v).toLocaleString('en-US'), xPix(v), padT + plotH + 18);
+  }
+  ctx.fillStyle = text;
+  ctx.fillText('hint value  l = ⟨v, s⟩', padL + plotW / 2, H - 8);
+}
+
+function renderGaa(): void {
+  const seed = Math.max(1, Math.floor(Number(el<HTMLInputElement>('gaa-seed').value) || 1));
+  const obs = observeGaa(gaaH, GAA_SAMPLES, seed);
+  el('gaa-predicted').textContent =
+    `${obs.predictedSd.toFixed(2)}  (√(${obs.h} × ${probeVariance(obs.probeBound)}))`;
+  el('gaa-sd').textContent =
+    `${obs.sd.toFixed(2)}  ·  mean ${obs.mean.toFixed(2)} (predicted 0)`;
+  el('gaa-ks').textContent = obs.ks.toFixed(4);
+  el('gaa-crit').textContent = `${obs.ksCritical.toFixed(4)}  (N = ${fmt(obs.samples)})`;
+
+  const box = el('gaa-verdict');
+  box.className = `calc-result ${obs.rejected ? 'not-yet' : 'recoverable'}`;
+  box.innerHTML = obs.rejected
+    ? `<strong>Gaussian fit REJECTED at h = ${obs.h}.</strong> D = ${obs.ks.toFixed(4)} exceeds ` +
+      `the 5% critical value ${obs.ksCritical.toFixed(4)}. The sampled hints are not ` +
+      `distributed the way the assumption says they are.`
+    : `<strong>Gaussian fit not rejected at h = ${obs.h}.</strong> D = ${obs.ks.toFixed(4)} sits ` +
+      `under the 5% critical value ${obs.ksCritical.toFixed(4)}, and the measured spread ` +
+      `${obs.sd.toFixed(2)} lands within ` +
+      `${Math.abs(100 * (obs.sd / obs.predictedSd - 1)).toFixed(1)}% of the ` +
+      `${obs.predictedSd.toFixed(2)} the assumption predicted from h alone.`;
+
+  el<HTMLCanvasElement>('gaa-chart').setAttribute(
+    'aria-label',
+    `Histogram of ${fmt(obs.samples)} sampled hint values at Hamming weight ${obs.h}, with the ` +
+      `Gaussian the assumption predicts drawn over it. Kolmogorov-Smirnov D is ` +
+      `${obs.ks.toFixed(4)} against a 5% critical value of ${obs.ksCritical.toFixed(4)}: the fit is ` +
+      `${obs.rejected ? 'rejected' : 'not rejected'}.`,
+  );
+  drawGaa(obs);
+}
+
+function buildGaaWeights(): void {
+  const box = el('gaa-weights');
+  box.innerHTML = '';
+  for (const w of GAA_WEIGHTS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `scenario-btn${w === gaaH ? ' active' : ''}`;
+    b.dataset.gaaH = String(w);
+    b.setAttribute('aria-pressed', String(w === gaaH));
+    b.textContent = `h = ${w}`;
+    b.addEventListener('click', () => {
+      gaaH = w;
+      buildGaaWeights();
+      renderGaa();
+    });
+    box.appendChild(b);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Exhibit: the learner's own leakage profile.
+// ---------------------------------------------------------------------------
+const PROFILE_PRESETS: { label: string; text: string }[] = [
+  {
+    label: 'Steady low-rate capture',
+    text: '# hints observed per day, masked implementation\nday 1: 12\nday 2: 11\nday 3: 14\nday 4: 9\nday 5: 13\nday 6: 10\nday 7: 12',
+  },
+  {
+    label: 'Quiet, then a burst',
+    text: '# a key rotation window opens on day 5\n2\n1\n3\n2\n180\n140\n4\n2',
+  },
+  {
+    label: 'Masking switched on midway',
+    text: '# countermeasure deployed after period 4\nwk 1: 90\nwk 2: 85\nwk 3: 95\nwk 4: 88\nwk 5: 3\nwk 6: 2\nwk 7: 4',
+  },
+];
+
+function drawProfile(entries: { hints: number; cumulative: number }[], threshold: number): void {
+  const canvas = el<HTMLCanvasElement>('profile-chart');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const W = canvas.width;
+  const H = canvas.height;
+  const padL = 70;
+  const padR = 20;
+  const padT = 18;
+  const padB = 38;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  ctx.clearRect(0, 0, W, H);
+
+  const border = cssVar('--border');
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, padT + plotH);
+  ctx.lineTo(padL + plotW, padT + plotH);
+  ctx.stroke();
+
+  if (entries.length === 0) return;
+
+  const yMax =
+    Math.max(threshold, entries[entries.length - 1].cumulative, ...entries.map((e) => e.hints)) *
+      1.1 || 1;
+  const xPix = (i: number) => padL + ((i + 0.5) / entries.length) * plotW;
+  const yPix = (v: number) => padT + plotH - (v / yMax) * plotH;
+  const barW = Math.max(2, (plotW / entries.length) * 0.6);
+
+  ctx.fillStyle = cssVar('--accent');
+  ctx.globalAlpha = 0.5;
+  entries.forEach((e, i) => {
+    const y = yPix(e.hints);
+    ctx.fillRect(xPix(i) - barW / 2, y, barW, padT + plotH - y);
+  });
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = cssVar('--accent-2');
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  entries.forEach((e, i) => {
+    const x = xPix(i);
+    const y = yPix(e.cumulative);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  ctx.save();
+  ctx.setLineDash([6, 5]);
+  ctx.strokeStyle = cssVar('--text-muted');
+  ctx.lineWidth = 1.5;
+  const ty = yPix(threshold);
+  ctx.beginPath();
+  ctx.moveTo(padL, ty);
+  ctx.lineTo(padL + plotW, ty);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = cssVar('--text-muted');
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`threshold ${fmt(threshold)}`, padL + 6, Math.max(padT + 12, ty - 6));
+}
+
+function renderProfile(): void {
+  const text = el<HTMLTextAreaElement>('profile-input').value;
+  const parsed = parseLeakageProfile(text);
+  const threshold = hintsNew(h);
+  const out = profileOutcome(parsed, threshold);
+
+  const errBox = el('profile-errors');
+  errBox.innerHTML = parsed.errors.length
+    ? `<p class="profile-error"><strong>${parsed.errors.length} line${
+        parsed.errors.length === 1 ? '' : 's'
+      } could not be read</strong> (skipped, not counted as zero): ` +
+      parsed.errors
+        .slice(0, 6)
+        .map((e) => `line ${e.line} “${escapeHtml(e.text)}” — ${e.message}`)
+        .join('; ') +
+      `</p>`
+    : '';
+
+  el('profile-periods').textContent = String(out.periods);
+  el('profile-total').textContent = fmt(out.total);
+  el('profile-threshold').textContent =
+    `${fmt(threshold)}  (C·h·log₂h at h = ${h}, n = 2^${nExp})`;
+  el('profile-peak').textContent = out.peak
+    ? `${fmt(out.peak.hints)} in period ${out.peak.index}${
+        out.peak.label ? ` (${escapeHtml(out.peak.label)})` : ''
+      }`
+    : '—';
+
+  const box = el('profile-verdict');
+  if (out.periods === 0) {
+    box.className = 'calc-result';
+    box.textContent = 'Paste or type a profile above — one number per period.';
+  } else if (out.crossingIndex !== null) {
+    const e = out.crossingEntry!;
+    box.className = 'calc-result recoverable';
+    box.innerHTML =
+      `<strong>Budget crossed at period ${out.crossingIndex}` +
+      `${e.label ? ` (${escapeHtml(e.label)})` : ''}.</strong> The running total reached ` +
+      `${fmt(e.cumulative)} against a threshold of ${fmt(threshold)}, with ` +
+      `${out.periods - out.crossingIndex} period${out.periods - out.crossingIndex === 1 ? '' : 's'} ` +
+      `still to go. Verdict: <strong>${riskVerdict(out.fractionOfThreshold)}</strong>. ` +
+      `<span class="badge badge-heuristic">heuristic · GAA</span> ` +
+      `<span class="muted">(hint budget met — not a claim an attack was run.)</span>`;
+  } else {
+    box.className = 'calc-result not-yet';
+    box.innerHTML =
+      `<strong>Never crossed.</strong> ${fmt(out.total)} hints over ${out.periods} periods ` +
+      `against a threshold of ${fmt(threshold)} — short by ${fmt(-out.margin)} ` +
+      `(${Math.round(out.fractionOfThreshold * 100)}% of budget). Verdict: ` +
+      `<strong>${riskVerdict(out.fractionOfThreshold)}</strong>. ` +
+      `<span class="badge badge-heuristic">heuristic · GAA</span>`;
+  }
+
+  el<HTMLCanvasElement>('profile-chart').setAttribute(
+    'aria-label',
+    `Cumulative hints across ${out.periods} periods, totalling ${fmt(out.total)}, against a ` +
+      `threshold of ${fmt(threshold)}. ` +
+      (out.crossingIndex === null
+        ? 'The threshold is never crossed.'
+        : `The threshold is crossed at period ${out.crossingIndex}.`),
+  );
+  drawProfile(parsed.entries, threshold);
+}
+
+function buildProfilePresets(): void {
+  const box = el('profile-presets');
+  box.innerHTML = '';
+  for (const p of PROFILE_PRESETS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'scenario-btn';
+    b.textContent = p.label;
+    b.addEventListener('click', () => {
+      el<HTMLTextAreaElement>('profile-input').value = p.text;
+      renderProfile();
+    });
+    box.appendChild(b);
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function init(): void {
   setupThemeToggle();
   readUrlState();
@@ -842,6 +1227,30 @@ function init(): void {
   });
   el<HTMLInputElement>('calc-rate').addEventListener('input', renderCalc);
   el<HTMLInputElement>('calc-ops').addEventListener('input', renderCalc);
+
+  // The attack runs once on load so the section is never an empty promise.
+  el<HTMLButtonElement>('atk-run').addEventListener('click', runAttack);
+  el<HTMLButtonElement>('atk-sweep-run').addEventListener('click', runSweep);
+  el<HTMLButtonElement>('atk-reroll').addEventListener('click', () => {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    el<HTMLInputElement>('atk-seed').value = String((buf[0] % 2_000_000_000) + 1);
+    runAttack();
+  });
+  el<HTMLSelectElement>('atk-n').addEventListener('change', runAttack);
+  el<HTMLSelectElement>('atk-h').addEventListener('change', runAttack);
+  el<HTMLInputElement>('atk-seed').addEventListener('change', runAttack);
+  runAttack();
+
+  buildGaaWeights();
+  el<HTMLInputElement>('gaa-seed').addEventListener('change', renderGaa);
+  el<HTMLInputElement>('gaa-seed').addEventListener('input', renderGaa);
+  renderGaa();
+
+  buildProfilePresets();
+  el<HTMLTextAreaElement>('profile-input').value = PROFILE_PRESETS[1].text;
+  el<HTMLTextAreaElement>('profile-input').addEventListener('input', renderProfile);
+  renderProfile();
 
   renderAll();
 }

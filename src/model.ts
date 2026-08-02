@@ -2,9 +2,14 @@
  * model.ts — pure, deterministic core for crypto-lab-lwe-hints.
  *
  * This module is an EDUCATIONAL ESTIMATOR of how many side-channel "hints" are
- * needed to recover a sparse-ternary LWE secret. It runs NO attack: no lattice
- * reduction, no side-channel, no randomness, no clock, no network. Every number
- * is real arithmetic you can audit here and in PAPER-NOTES.md.
+ * needed to recover a sparse-ternary LWE secret. THIS MODULE runs no attack: no
+ * lattice reduction, no side-channel, no randomness, no clock, no network. Every
+ * number is real arithmetic you can audit here and in PAPER-NOTES.md.
+ *
+ * The attack the page does run lives next door in ./attack.ts, at toy parameters
+ * and under its own honesty notice. Nothing here calls it, and its measured hint
+ * counts are NOT the counts this module estimates — see that file's header for
+ * exactly what it does and does not demonstrate.
  *
  * Source of truth: Hhan, Hong, Kim, Lee, Lee, "From Perfect to Approximate Hints:
  * Efficient LWE Secret Recovery Leveraging Low Hamming Weight", IACR ePrint 2026/1081.

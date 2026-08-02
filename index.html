@@ -17,7 +17,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Educational estimator: how many side-channel hints recover a sparse-ternary LWE secret, under the O(h log h) law of ePrint 2026/1081. Computes real arithmetic — runs no attack."
+      content="Educational estimator: how many side-channel hints recover a sparse-ternary LWE secret, under the O(h log h) law of ePrint 2026/1081 — plus a toy-parameter instance where the recovery is actually carried out, and a measurement of the Gaussian assumption behind the law."
     />
     <title>LWE Hints — How Cheaply Do Sparse Secrets Leak?</title>
     <link rel="stylesheet" href="/src/styles.css" />
@@ -206,7 +206,7 @@
         <ul class="tldr-points">
           <li><strong>Who's exposed:</strong> sparse-secret FHE / bootstrapping deployments with a side-channel leakage path.</li>
           <li><strong>Safer pattern:</strong> raise the Hamming weight h, mask / rate-limit leakage, and treat hint-availability as part of the threat model.</li>
-          <li><strong>What this is:</strong> an estimator of <em>hint counts</em> — it runs <em>no attack</em>, no lattice reduction, no randomness.</li>
+          <li><strong>What this is:</strong> an estimator of <em>hint counts</em> at the paper's parameters — no lattice reduction there — plus <a href="#attack">one toy-parameter instance where the recovery is actually run</a>, and <a href="#gaa">a measurement of the Gaussian assumption</a> the estimate rests on.</li>
         </ul>
         <p class="tldr-cite muted">
           Visualizing one result of Hhan et al., <em>“From Perfect to Approximate
@@ -447,6 +447,153 @@
         </p>
       </section>
 
+      <!-- 4a-bis. The attack, actually run. -->
+      <section class="card" id="attack">
+        <h2>Run it: recover a real secret from real hints</h2>
+        <p>
+          Everything above this line estimates. This runs. The page generates a genuine
+          LWE instance — <code>A·s + e = b (mod q)</code> with <code>q = 3329</code>, a
+          sparse ternary <code>s</code>, errors in <code>[−2, 2]</code> — and then
+          recovers <code>s</code> from perfect hints <code>l = ⟨v, s⟩ mod q</code>. The
+          attack reads only the hints; the planted secret is used afterwards, to check
+          the answer.
+        </p>
+        <p class="muted">
+          <strong>Toy parameters, stated plainly:</strong> <code>n</code> in the
+          hundreds and a 12-bit modulus, not <code>n = 2¹⁵</code> with a 700-bit one.
+          And this is <em>not</em> a re-run of ePrint 2026/1081 — that method handles
+          <em>approximate</em> hints, leans on the GAA, and finishes with lattice
+          reduction, so its hint count is a different number from the one below and
+          neither validates the other. What this does demonstrate, on a real instance
+          rather than in prose, is the structure they share: locating <em>which</em>
+          coordinates are nonzero is the expensive part, that search costs on the order
+          of <code>h·log₂(n/h)</code>, and the total therefore scales with <code>h</code>
+          and the log of the dimension rather than with <code>n</code>.
+        </p>
+
+        <div class="calc-grid">
+          <label class="calc-row">
+            <span>Dimension n</span>
+            <select id="atk-n">
+              <option value="256">256</option>
+              <option value="512" selected>512</option>
+              <option value="1024">1024</option>
+            </select>
+          </label>
+          <label class="calc-row">
+            <span>Hamming weight h</span>
+            <select id="atk-h">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="4">4</option>
+              <option value="8" selected>8</option>
+              <option value="16">16</option>
+              <option value="32">32</option>
+              <option value="64">64</option>
+            </select>
+          </label>
+          <label class="calc-row">
+            <span>Seed <span class="calc-hint muted">a run is reproducible from its seed</span></span>
+            <input type="number" id="atk-seed" min="1" step="1" value="20260101" />
+          </label>
+        </div>
+        <div class="calc-scenarios">
+          <button type="button" class="scenario-btn" id="atk-run">Run the recovery</button>
+          <button type="button" class="scenario-btn" id="atk-reroll">New random seed</button>
+          <button type="button" class="scenario-btn" id="atk-sweep-run">Sweep h = 2 … 32</button>
+        </div>
+
+        <dl class="atk-grid">
+          <dt>1 · Instance</dt><dd id="atk-instance">—</dd>
+          <dt>2 · Locating the support</dt><dd id="atk-support">—</dd>
+          <dt>3 · Solving for the values</dt><dd id="atk-values">—</dd>
+          <dt>4 · Total hints spent</dt><dd id="atk-total">—</dd>
+          <dt>5 · Recovered secret vs planted secret</dt><dd id="atk-match">—</dd>
+          <dt>6 · Does it explain the LWE samples?</dt><dd id="atk-residual">—</dd>
+          <dt>7 · Control: a different sparse secret</dt><dd id="atk-control">—</dd>
+        </dl>
+        <p class="calc-result" id="atk-verdict" aria-live="polite">—</p>
+
+        <div class="table-wrap">
+          <table class="atk-sweep-table" id="atk-sweep-table">
+            <caption class="muted">
+              The same recovery at a fixed dimension across Hamming weights. The measured
+              cost climbs with <code>h</code>; the prior <code>n/2</code> threshold does
+              not move at all, because it never knew the secret was sparse.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">h</th>
+                <th scope="col">Support hints</th>
+                <th scope="col">Value hints</th>
+                <th scope="col">Total measured</th>
+                <th scope="col">Per nonzero</th>
+                <th scope="col">Prior n/2</th>
+                <th scope="col">Recovered?</th>
+              </tr>
+            </thead>
+            <tbody id="atk-sweep-body">
+              <tr><td colspan="7" class="muted">Press &ldquo;Sweep h&rdquo; to run it.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4a-ter. The Gaussian Approximation Assumption, measured rather than badged. -->
+      <section class="card" id="gaa">
+        <h2>The GAA, measured</h2>
+        <p>
+          Every modeled number on this page carries a
+          <span class="badge badge-heuristic">heuristic · GAA</span> badge, because the
+          paper's law is empirical under the <strong>Gaussian Approximation
+          Assumption</strong>. A badge tells you a claim is conditional; it never lets
+          you see the condition. This does.
+        </p>
+        <p class="muted">
+          A perfect hint is <code>l = ⟨v, s⟩</code>. With a sparse ternary secret of
+          weight <code>h</code> and a probe drawn uniformly from
+          <code>{−8, …, 8}ⁿ</code>, <code>l</code> is a sum of exactly <code>h</code>
+          independent symmetric terms — so the assumption makes a falsifiable prediction:
+          mean 0 and standard deviation <code>√(h · σ²)</code> with
+          <code>σ² = 24</code>. The page draws 4,000 hints and compares them against
+          <em>that</em> Gaussian — not against one refitted to the sample, which would
+          quietly hand the assumption its own parameters.
+        </p>
+
+        <div class="calc-scenarios" id="gaa-weights" role="group" aria-label="Hamming weight for the GAA check">
+          <!-- weight buttons injected by main.ts -->
+        </div>
+        <label class="calc-row calc-row--inline">
+          <span>Seed</span>
+          <input type="number" id="gaa-seed" min="1" step="1" value="1013" />
+        </label>
+
+        <figure class="chart-wrap">
+          <canvas id="gaa-chart" width="900" height="360" role="img"
+            aria-label="Histogram of sampled hint values with the Gaussian curve the assumption predicts drawn over it."></canvas>
+          <figcaption class="muted">
+            Bars: 4,000 sampled hint values. Curve: the Gaussian the GAA predicts from
+            <code>h</code> alone.
+          </figcaption>
+        </figure>
+
+        <dl class="atk-grid">
+          <dt>Predicted spread √(h·σ²)</dt><dd id="gaa-predicted">—</dd>
+          <dt>Measured spread</dt><dd id="gaa-sd">—</dd>
+          <dt>Kolmogorov–Smirnov D</dt><dd id="gaa-ks">—</dd>
+          <dt>5% critical value 1.36/√N</dt><dd id="gaa-crit">—</dd>
+        </dl>
+        <p class="calc-result" id="gaa-verdict" aria-live="polite">—</p>
+        <p class="muted">
+          A KS test at α = 0.05 rejects a perfectly Gaussian sample one run in twenty, so
+          a single rejection at large <code>h</code> is noise — change the seed and watch.
+          What is <em>not</em> noise is <code>h = 1</code> and <code>h = 2</code>, which
+          are rejected on every seed by a wide margin. The assumption is a
+          central-limit-theorem claim, and it gets weaker exactly where the secret gets
+          sparser — which is the direction FHE parameter choices push.
+        </p>
+      </section>
+
       <!-- 4b. Where hints come from — grounds the threat model in real channels -->
       <section class="card" id="origins">
         <h2>Where hints come from in practice</h2>
@@ -528,6 +675,44 @@
           <div class="calc-bar-threshold" id="calc-bar-threshold" title="new-method threshold"></div>
         </div>
         <div class="calc-result" id="calc-result" aria-live="polite">—</div>
+
+        <h3 class="calc-sub">Or paste your own leakage profile</h3>
+        <p class="muted">
+          A flat rate times a count of operations is a convenient fiction. Real leakage
+          has quiet stretches, bursts while a key is in use, and a step change the day
+          someone turns masking on. Type or paste what your own campaign looks like —
+          <strong>one number per period</strong>, newline- or comma-separated, with an
+          optional <code>label:</code> prefix and <code>#</code> comments. The threshold
+          it is measured against is <code>C·h·log₂h</code> for the
+          <code>(n, h)</code> selected above, so moving the <code>h</code> slider moves
+          the line your profile has to cross.
+        </p>
+        <div class="calc-scenarios" id="profile-presets" role="group" aria-label="Starting profiles">
+          <!-- preset fill buttons injected by main.ts -->
+        </div>
+        <label class="profile-label" for="profile-input">Hints leaked per period</label>
+        <textarea id="profile-input" class="profile-input" rows="8" spellcheck="false"
+          aria-describedby="profile-help"></textarea>
+        <p class="muted" id="profile-help">
+          Anything that is not a non-negative number is reported against its line rather
+          than quietly treated as zero.
+        </p>
+        <div class="profile-errors" id="profile-errors" role="status" aria-live="polite"></div>
+        <figure class="chart-wrap">
+          <canvas id="profile-chart" width="900" height="300" role="img"
+            aria-label="Cumulative hints per period against the new-method hint threshold."></canvas>
+          <figcaption class="muted">
+            Bars: hints leaked in each period. Line: the running total. Dashed: the
+            <code>C·h·log₂h</code> threshold for the selected regime.
+          </figcaption>
+        </figure>
+        <dl class="atk-grid">
+          <dt>Periods parsed</dt><dd id="profile-periods">—</dd>
+          <dt>Total hints</dt><dd id="profile-total">—</dd>
+          <dt>Threshold for this (n, h)</dt><dd id="profile-threshold">—</dd>
+          <dt>Largest single period</dt><dd id="profile-peak">—</dd>
+        </dl>
+        <p class="calc-result" id="profile-verdict" aria-live="polite">—</p>
       </section>
 
       <!-- 5b. Self-check -->
@@ -625,9 +810,28 @@
             but is not claimed to extrapolate arbitrarily beyond those regimes.
           </li>
           <li>
-            <strong>The GAA is an assumption.</strong> The O(h log h) law is
-            empirical / heuristic under the Gaussian Approximation Assumption — a
-            conservative lower-bound analysis, not a worst-case proof.
+            <strong>The GAA is an assumption</strong> — and now a measured one. The
+            O(h log h) law is empirical / heuristic under the Gaussian Approximation
+            Assumption: a conservative lower-bound analysis, not a worst-case proof.
+            <a href="#gaa">The GAA, measured</a> above checks the assumption's own
+            prediction against sampled hints and reports the Kolmogorov–Smirnov
+            statistic. It is not rejected at the weights the paper works at, and it
+            <em>is</em> decisively rejected at h = 1 and h = 2 — so the assumption is
+            weakest exactly where FHE parameter choices push. Measuring the
+            distribution of hint values is not the same as validating the paper's
+            estimator, which depends on more than that one distribution.
+          </li>
+          <li>
+            <strong>The attack that runs here is not the paper's.</strong>
+            <a href="#attack">Run it</a> above performs a genuine secret recovery —
+            real LWE instance, real hints, real Gaussian elimination, and two
+            independent checks that the recovered vector is the secret — but with
+            <em>perfect</em> hints at toy parameters (n in the hundreds, q = 3329),
+            finishing in linear algebra rather than lattice reduction. Its hint count
+            is its own number. It demonstrates the structure the O(h log h) law rests
+            on — that locating the support is the expensive part and costs
+            h·log₂(n/h) — not the constant C = 2, and not the paper's approximate-hint
+            results.
           </li>
           <li>
             <strong>Hint type varies by regime.</strong> The "Validated hints"
@@ -644,8 +848,10 @@
           </li>
           <li>
             <strong>Hints presuppose a leakage channel</strong> this demo does not
-            model. "Recoverable" means the hint <em>budget</em> is met — not that an
-            attack was run.
+            model. In the estimator and the threat calculator, "recoverable" means the
+            hint <em>budget</em> is met at paper-scale parameters — not that an attack
+            was run there. The one place an attack <em>is</em> run is
+            <a href="#attack">the toy-parameter recovery</a>, which says so on its face.
           </li>
         </ul>
       </section>
