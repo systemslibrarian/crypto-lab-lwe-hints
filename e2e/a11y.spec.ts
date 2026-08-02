@@ -52,10 +52,28 @@ async function scan(page: Page): Promise<void> {
   expect(summary).toEqual([]);
 }
 
+async function controlBorderContrast(page: Page): Promise<number> {
+  return page.locator('.calc-row input').first().evaluate((el) => {
+    const parse = (value: string) => value.match(/[\d.]+/g)!.slice(0, 3).map(Number);
+    const luminance = (rgb: number[]) => {
+      const linear = rgb.map((part) => {
+        const channel = part / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+    };
+    const style = getComputedStyle(el);
+    const border = luminance(parse(style.borderTopColor));
+    const background = luminance(parse(style.backgroundColor));
+    return (Math.max(border, background) + 0.05) / (Math.min(border, background) + 0.05);
+  });
+}
+
 test('no WCAG A/AA violations in dark theme', async ({ page }) => {
   await page.goto('.');
   await revealAll(page);
   await neutralizeMotion(page);
+  expect(await controlBorderContrast(page)).toBeGreaterThanOrEqual(3);
   await scan(page);
 });
 
@@ -65,5 +83,6 @@ test('no WCAG A/AA violations in light theme', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await revealAll(page);
   await neutralizeMotion(page);
+  expect(await controlBorderContrast(page)).toBeGreaterThanOrEqual(3);
   await scan(page);
 });

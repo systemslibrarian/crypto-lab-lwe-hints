@@ -6,6 +6,7 @@
   --bg-elev: #161b22;
   --bg-elev-2: #1c2330;
   --border: #2a3140;
+  --control-border: #697386;
   --text: #e6edf3;
   --text-muted: #9aa5b1;
   --accent: #5cc8ff;       /* new method */
@@ -24,6 +25,7 @@
   --bg-elev: #ffffff;
   --bg-elev-2: #eef1f5;
   --border: #d0d7de;
+  --control-border: #707780;
   --text: #1f2328;
   --text-muted: #57606a;
   --accent: #0969da;
@@ -467,7 +469,7 @@ figcaption { margin-top: 0.5rem; font-size: 0.85rem; }
 .calc-row { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.9rem; }
 .calc-row input {
   background: var(--bg-elev-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   color: var(--text);
   border-radius: 6px;
   padding: 0.5rem;
