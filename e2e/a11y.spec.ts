@@ -36,9 +36,7 @@ async function revealAll(page: Page): Promise<void> {
 }
 
 async function neutralizeMotion(page: Page): Promise<void> {
-  await page.addStyleTag({
-    content: `*,*::before,*::after{transition:none!important;animation:none!important;opacity:1!important}`,
-  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
 }
 
 async function scan(page: Page): Promise<void> {
@@ -71,6 +69,7 @@ async function controlBorderContrast(page: Page): Promise<number> {
 
 test('no WCAG A/AA violations in dark theme', async ({ page }) => {
   await page.goto('.');
+  await expect(page.locator('h1')).toBeVisible();
   await revealAll(page);
   await neutralizeMotion(page);
   expect(await controlBorderContrast(page)).toBeGreaterThanOrEqual(3);
@@ -81,6 +80,7 @@ test('no WCAG A/AA violations in light theme', async ({ page }) => {
   await page.goto('.');
   await page.locator('#cl-theme-toggle').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('h1')).toBeVisible();
   await revealAll(page);
   await neutralizeMotion(page);
   expect(await controlBorderContrast(page)).toBeGreaterThanOrEqual(3);
