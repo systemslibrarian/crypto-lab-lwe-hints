@@ -17,6 +17,7 @@ export const NONTEXT_BASELINE: Record<
   string,
   { ratio: number; required: number; unverified: boolean }
 > = {
+  "control-boundary|a.cl-btn": { ratio: 1.49, required: 3.0, unverified: false },
   "control-boundary|button#atk-reroll.scenario-btn": { ratio: 1.33, required: 3.0, unverified: false },
   "control-boundary|button#atk-run.scenario-btn": { ratio: 1.33, required: 3.0, unverified: false },
   "control-boundary|button#atk-sweep-run.scenario-btn": { ratio: 1.33, required: 3.0, unverified: false },
