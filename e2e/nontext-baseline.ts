@@ -21,7 +21,6 @@ export const NONTEXT_BASELINE: Record<
   "control-boundary|button#atk-reroll.scenario-btn": { ratio: 1.33, required: 3.0, unverified: false },
   "control-boundary|button#atk-run.scenario-btn": { ratio: 1.33, required: 3.0, unverified: false },
   "control-boundary|button#atk-sweep-run.scenario-btn": { ratio: 1.33, required: 3.0, unverified: false },
-  "control-boundary|button#cl-theme-toggle.cl-btn.cl-icon": { ratio: 1.49, required: 3.0, unverified: false },
   // TWO different elements share this key, and the second only became visible
   // to the oracle once it started walking every painted border side. The
   // PRESSED segment is delineated by its accent wash and reports 1.55:1. The
