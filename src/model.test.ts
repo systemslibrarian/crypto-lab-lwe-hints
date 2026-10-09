@@ -213,7 +213,7 @@ describe('riskVerdict bands (Safe / Manageable / Dangerous)', () => {
   });
 });
 
-describe('bisectSteps: position-identification (the log-h factor)', () => {
+describe('bisectSteps: position-identification (log n search cost)', () => {
   it('step 0 leaves the full window ambiguous', () => {
     const s = bisectSteps(16, 5, 0);
     expect(s.candidates.length).toBe(16);

@@ -187,18 +187,16 @@ export function effectiveScenario(n: number, h: number, hintsAvailable: number):
 
 /**
  * ---------------------------------------------------------------------------
- * WHY log h? — the position-identification cost (pure, deterministic helpers).
+ * Position-identification cost (pure, deterministic helpers).
  * ---------------------------------------------------------------------------
- * The headline law is O(h·log h), NOT O(h). A learner reasonably asks: h unknowns
- * should need ~h equations — where does the extra log h come from?
+ * Binary search for one nonzero among n coordinates takes at most ceil(log2 n)
+ * locating hints. Repeating it independently for h positions costs at most
+ * h*ceil(log2 n) hints. This illustrates search overhead, but does NOT derive
+ * the paper's O(h*log h) heuristic or identify log n with log h.
  *
- * The answer is that the attacker does not know WHICH of the n coordinates are
- * the h nonzero ones. Pinning down each nonzero POSITION is a search: a "locating"
- * hint that answers "does this nonzero lie in this subset?" halves the ambiguity,
- * so isolating one position among n candidates costs ~log2(n) such hints, and the
- * whole support (all h positions) costs on the order of h·log h — the classic
- * coupon-collector / group-testing overhead. VALUES are then cheap; POSITIONS are
- * what carry the log factor.
+ * The separate adaptive group-testing exhibit reports its own prediction,
+ * h*ceil(log2(n/h)) + h, including value hints. The paper estimator remains
+ * 2*h*log2(h), based on Table 1; these are different methods and costs.
  *
  * `bisectSteps` returns the deterministic set of candidate positions still
  * ambiguous after `step` locating hints, for a single nonzero we are binary-
@@ -212,7 +210,7 @@ export interface BisectState {
   candidates: number[];
   /** True once the window has collapsed to the single true position. */
   resolved: boolean;
-  /** Minimum locating hints to fully isolate a target among `n` positions. */
+  /** Worst-case locating hints to isolate a target among `n` positions. */
   worstCase: number;
 }
 
@@ -220,7 +218,7 @@ export interface BisectState {
  * Simulate `step` halving ("locating") hints narrowing an initial window of
  * `n` positions down toward the true nonzero at index `target`. Deterministic:
  * same (n, target, step) always yields the same candidate window. Models the
- * position-identification search that produces the log-factor in O(h·log h).
+ * binary-search cost in log n, not the paper's log h hint law.
  */
 export function bisectSteps(n: number, target: number, step: number): BisectState {
   requireInteger('n', n);

@@ -68,10 +68,14 @@ The page is a guided path from "what is even leaking?" to "why is the cost
    `h ≪ n` legible as *"in a window this size you'd expect ~0 nonzeros,"* and a
    fixed, hand-checkable worked hint (perfect vs approximate on the *same*
    instance).
-5. **Why `h·log₂h`, not just `h`?** — an interactive that hides `h = 3` nonzeros
-   among `n = 16` and lets you add *locating hints* one at a time, watching
-   ambiguous candidate positions collapse. It makes the `log h` factor concrete:
-   it is the cost of finding *which* coordinates are nonzero, not their values.
+5. **Finding positions: `log₂n` search cost** — three independent binary
+   searches for `h = 3` nonzeros among `n = 16`. Each button press advances one
+   round: one locating hint per target, not one shared hint. The worst case is
+   `⌈log₂n⌉ = 4` per position, or 12 independent hints overall. This illustrates
+   position-search overhead; it does not derive the paper's `h·log₂h` law.
+   The separate adaptive group-testing exhibit reports its own prediction
+   `h·⌈log₂(n/h)⌉ + h`, including value hints; neither toy cost is the paper
+   estimator `2h·log₂h`.
 6. **Run it: recover a real secret from real hints** — the previous exhibit's
    intuition, carried out on an actual LWE instance. Choose `n`, `h`, and a seed;
    the page plants a sparse ternary secret, publishes hints, locates the support by
