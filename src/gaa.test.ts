@@ -47,28 +47,32 @@ describe('the Gaussian Approximation Assumption, measured', () => {
   // in twenty, by construction. So "this particular seed passed" is not the
   // claim worth pinning; the rejection RATE across many seeds is. These tests
   // assert the rate, which is what "the assumption holds here" actually means.
-  const rejectionRate = (h: number, seeds = 40): number => {
-    let rejected = 0;
-    for (let s = 0; s < seeds; s += 1) {
-      if (observeGaa(h, 4000, 1000 + s * 13).rejected) rejected += 1;
+  // Both statistics use the exact same deterministic seeds and observations.
+  // Computing them twice adds no independent evidence and exceeded the runner's
+  // per-case 5s budget. Keep all 40 seeds and 4,000 samples per observation.
+  const observations = new Map<string, ReturnType<typeof observeGaa>[]>();
+  const measure = (h: number, seeds: number) => {
+    const key = `${h}:${seeds}`;
+    if (!observations.has(key)) {
+      observations.set(key, Array.from({ length: seeds }, (_, s) => observeGaa(h, 4000, 1000 + s * 13)));
     }
-    return rejected / seeds;
+    return observations.get(key)!;
   };
 
+  const rejectionRate = (h: number, seeds = 40): number =>
+    measure(h, seeds).filter((observation) => observation.rejected).length / seeds;
+
   const medianKs = (h: number, seeds = 40): number => {
-    const ks: number[] = [];
-    for (let s = 0; s < seeds; s += 1) ks.push(observeGaa(h, 4000, 1000 + s * 13).ks);
+    const ks = measure(h, seeds).map((observation) => observation.ks);
     ks.sort((a, b) => a - b);
     return ks[Math.floor(seeds / 2)];
   };
 
-  it('is not rejected more often than chance at the weights the paper works at', () => {
-    for (const h of [32, 64, 128, 192]) {
+  it.each([32, 64, 128, 192])('is not rejected more often than chance at paper weight h=%i', (h) => {
       // Nominal Type-I rate is 5%; 20% over 40 seeds would be a ~0.2% event if
       // the fit were genuinely good, so exceeding it means it is not.
       expect(rejectionRate(h), `h=${h}`).toBeLessThanOrEqual(0.2);
       expect(medianKs(h), `h=${h}`).toBeLessThan(1.36 / Math.sqrt(4000));
-    }
   });
 
   it('IS rejected at h = 1, on every seed', () => {
