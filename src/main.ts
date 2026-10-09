@@ -720,12 +720,10 @@ function runAha(): void {
 }
 
 // ---------------------------------------------------------------------------
-// "Why log h?" — position-identification interactive.
-// A fixed tiny secret (h=3 nonzeros among n=16). Each "locating hint" is one
-// yes/no bisection step applied to EVERY not-yet-resolved nonzero at once. The
-// learner watches ambiguous candidate cells collapse — SEEING that finding the
-// POSITIONS (not the values) is the log-factor cost. Deterministic: positions and
-// the search are fixed, all narrowing comes from ./model bisectSteps.
+// Position-identification interactive: h=3 independent searches among n=16.
+// One button press advances each search by one locating hint (a round, not a
+// single shared hint). Its log n cost does not derive the paper's log h law.
+// Deterministic: all narrowing comes from ./model bisectSteps.
 // ---------------------------------------------------------------------------
 const WL_N = 16;
 const WL_TARGETS = [2, 9, 13]; // the h=3 secretly-nonzero positions (fixed)
@@ -775,18 +773,18 @@ function renderWhyLog(): void {
 
   const foundCount = found.size;
   const worst = wlWorstCase();
-  count.textContent = `Locating hints used: ${wlStep} · positions pinned down: ${foundCount} of ${WL_TARGETS.length}`;
+  count.textContent = `Search rounds: ${wlStep} · locating hints per nonzero: ${wlStep} · total: ${wlStep * WL_TARGETS.length} · positions pinned down: ${foundCount} of ${WL_TARGETS.length}`;
 
   if (wlStep === 0) {
     status.textContent =
-      `Zero hints so far: every one of the ${WL_N} coordinates is still a suspect — any could be one of the ${WL_TARGETS.length} nonzeros. Add a locating hint to start ruling positions out.`;
+      `Zero hints so far: every one of the ${WL_N} coordinates is still a suspect — any could be one of the ${WL_TARGETS.length} nonzeros. Advance a search round to start ruling positions out.`;
   } else if (foundCount < WL_TARGETS.length) {
     const ambCount = ambiguous.size;
     status.textContent =
-      `After ${wlStep} locating hint${wlStep === 1 ? '' : 's'}: ${ambCount} coordinate${ambCount === 1 ? '' : 's'} still ambiguous, ${foundCount} position${foundCount === 1 ? '' : 's'} pinned down. Each hint roughly halves the suspects — a binary search per nonzero.`;
+      `After ${wlStep} search round${wlStep === 1 ? '' : 's'}: ${ambCount} coordinate${ambCount === 1 ? '' : 's'} still ambiguous, ${foundCount} position${foundCount === 1 ? '' : 's'} pinned down. Each independent hint roughly halves its search window — a binary search per nonzero.`;
   } else {
     status.textContent =
-      `Done in ${wlStep} locating hints (~log₂${WL_N} = ${worst} per nonzero). All ${WL_TARGETS.length} positions found — and only NOW are the ternary values (${WL_SIGNS.join(', ')}) worth reading off. Locating the positions was the expensive part: that is the log₂h.`;
+      `Done in ${wlStep} search rounds: ${worst} = ⌈log₂${WL_N}⌉ locating hints per nonzero, ${wlStep * WL_TARGETS.length} independent hints in total. All ${WL_TARGETS.length} positions found; the ternary values (${WL_SIGNS.join(', ')}) are then revealed. This is log₂n search cost, not the paper's log₂h. The separate recovery exhibit reports h·⌈log₂(n/h)⌉ + h; the paper estimator is 2h·log₂h. Both describe different methods.`;
   }
 
   el<HTMLButtonElement>('wl-add').disabled = foundCount === WL_TARGETS.length;

@@ -365,9 +365,10 @@
           <p class="he-takeaway">
             Stack enough such equations and the <code>h</code> unknowns get pinned
             down. But <strong>how many is “enough”?</strong> Not just <code>h</code> —
-            it is <code>h·log₂h</code>, and that extra <code>log₂h</code> is the whole
-            surprise. The next panel shows where it hides: the attacker must also find
-            <em>which</em> coordinates are nonzero.
+            the paper reports a heuristic <code>O(h·log₂h)</code> hint budget
+            under the GAA. The next panel illustrates the separate task of finding
+            <em>which</em> coordinates are nonzero, using a toy binary search whose
+            <code>log₂n</code> cost does not derive that law.
           </p>
         </div>
 
@@ -386,49 +387,46 @@
         </p>
       </section>
 
-      <!-- 4a. WHY log h? — the position-identification interactive (the crux) -->
+      <!-- 4a. Independent binary searches: log n, not the paper's log h. -->
       <section class="card whylog" id="whylog">
-        <h2>Why <code>h·log₂h</code>, not just <code>h</code>?</h2>
+        <h2>Finding positions: <code>log₂n</code> search cost</h2>
         <p>
-          Here is the puzzle. There are <code>h</code> unknown nonzero values, so
-          <code>h</code> equations should pin them down — that would be <code>O(h)</code>.
-          Yet the law is <code>O(h·log₂h)</code>. Where does the extra
-          <code>log₂h</code> come from? <strong>From not knowing which coordinates
-          are the nonzero ones.</strong> Finding a value is cheap; finding its
-          <em>position</em> is a search.
+          Knowing the <code>h</code> nonzero values does not tell you which of the
+          <code>n</code> coordinates contain them. This interactive illustrates
+          that extra search work with independent binary searches. It does not
+          derive the paper's <code>O(h·log₂h)</code> heuristic.
         </p>
         <p>
-          Below is a tiny secret: <strong>h = 3 nonzeros hidden among n = 16</strong>
-          coordinates. Add <em>locating hints</em> one at a time. Each locating hint
-          answers a single yes/no question — “does a nonzero lie in this half?” — and
-          rules out half the remaining candidates. Watch the
-          <span class="wl-legend-amb">ambiguous</span> cells (positions that could
-          still be a nonzero) shrink. Only when a cell is the <em>last one
-          standing</em> is its position <span class="wl-legend-found">pinned
-          down</span>.
+          Below are <strong>h = 3 nonzeros hidden among n = 16</strong> coordinates.
+          Each button press advances one <em>search round</em>: one separate yes/no
+          locating hint per nonzero, asking whether that target lies in the lower
+          half of its remaining window. The three searches advance together;
+          a round uses three independent hints, not one shared hint. Watch the
+          <span class="wl-legend-amb">ambiguous</span> cells shrink until each
+          position is <span class="wl-legend-found">pinned down</span>.
         </p>
 
         <div class="wl-controls">
-          <button type="button" class="wl-btn" id="wl-add">+ Add a locating hint</button>
+          <button type="button" class="wl-btn" id="wl-add">+ Advance a search round</button>
           <button type="button" class="wl-btn wl-btn-ghost" id="wl-reset">Reset</button>
           <span class="wl-count muted" id="wl-count" aria-live="polite"></span>
         </div>
 
         <div class="wl-strip" id="wl-strip" role="img"
-          aria-label="Sixteen coordinates, three secretly nonzero. As locating hints are added, ambiguous candidate positions are progressively ruled out until each nonzero position is uniquely pinned down."></div>
+          aria-label="Sixteen coordinates, three secretly nonzero. As independent search rounds advance, ambiguous candidate positions are progressively ruled out until each nonzero position is uniquely pinned down."></div>
 
         <p class="wl-status" id="wl-status" aria-live="polite"></p>
 
         <p class="wl-takeaway">
-          <strong>That is the <code>log₂h</code>.</strong> Isolating one nonzero
-          position takes about <code>log₂</code>(window) yes/no hints — a binary
-          search — and you must do it for each of the <code>h</code> nonzeros. So the
-          total is not <code>h</code> but <code>≈ h·log₂h</code>: <code>h</code> for
-          the values, times a <code>log</code> factor to <em>locate</em> them. (Real
-          recovery interleaves value and position information rather than separating
-          them this cleanly — this is the intuition, not the exact protocol — but the
-          log factor is genuinely the cost of position-finding: a coupon-collector /
-          group-testing overhead.)
+          <strong>This toy search costs <code>log₂n</code> per nonzero.</strong>
+          The worst case is <code>⌈log₂n⌉</code> hints per position, or
+          <code>h·⌈log₂n⌉</code> independent hints overall: here, 4 per position
+          and 12 in total. Doubling n to 32 raises the per-position cost to 5.
+          The separate <a href="#attack">recovery exhibit</a> uses adaptive group
+          testing and reports its own prediction <code>h·⌈log₂(n/h)⌉ + h</code>,
+          including value hints. Neither cost is the paper's
+          <code>2h·log₂h</code> estimator; that estimator remains a separate,
+          GAA-based fit to the paper's Table 1.
         </p>
       </section>
 
@@ -813,10 +811,9 @@
             independent checks that the recovered vector is the secret — but with
             <em>perfect</em> hints at toy parameters (n in the hundreds, q = 3329),
             finishing in linear algebra rather than lattice reduction. Its hint count
-            is its own number. It demonstrates the structure the O(h log h) law rests
-            on — that locating the support is the expensive part and costs
-            h·log₂(n/h) — not the constant C = 2, and not the paper's approximate-hint
-            results.
+            is its own number. Its adaptive group-testing prediction is h·⌈log₂(n/h)⌉ + h,
+            including value hints. This does not derive the paper's O(h log h) law,
+            its constant C = 2, or its approximate-hint results.
           </li>
           <li>
             <strong>Hint type varies by regime.</strong> The "Validated hints"
