@@ -365,9 +365,10 @@
           <p class="he-takeaway">
             Stack enough such equations and the <code>h</code> unknowns get pinned
             down. But <strong>how many is “enough”?</strong> Not just <code>h</code> —
-            it is <code>h·log₂h</code>, and that extra <code>log₂h</code> is the whole
-            surprise. The next panel shows where it hides: the attacker must also find
-            <em>which</em> coordinates are nonzero.
+            the paper reports a heuristic <code>O(h·log₂h)</code> hint budget
+            under the GAA. The next panel illustrates the separate task of finding
+            <em>which</em> coordinates are nonzero, using a toy binary search whose
+            <code>log₂n</code> cost does not derive that law.
           </p>
         </div>
 
