@@ -127,6 +127,8 @@ baseline, with every figure computed by the auditable `src/model.ts`.
 
 ## What Can Go Wrong
 
+- **Hint count and recovery cost differ — 16 November 2026.** [Yang, Cao, Yin and Cheng, *Optimized Solving Strategy and Two-Step Estimator for LWE with Hints*, ePrint 2026/2873](https://eprint.iacr.org/2026/2873) (preprint, published 14 November 2026) report secret recovery on a CRYSTALS-KYBER 512 instance using supplied perfect hints and tuned BKZ reduction/sieving. Perfect hints are exact relations; approximate hints include error. This attack-model-conditional experiment assumes the hints are available, rather than demonstrating their collection from a deployed device or an unassisted ML-KEM break. Its Kyber setting differs from this lab’s sparse-ternary FHE model. We do not run its solver or calibrate our calculator from its timings; the existing model and linear-algebra toy recovery are unchanged. See [Parameters & sources → Hint count and recovery cost](https://systemslibrarian.github.io/crypto-lab-lwe-hints/#hint-recovery-cost).
+
 - **Low Hamming weight is a double edge** — choosing very small `h` for FHE efficiency is exactly what makes the secret cheap to recover once hints leak; the `O(h·log₂h)` budget shrinks as `h` shrinks.
 - **Approximate vs perfect hints differ** — hints carrying error are weaker per-hint than perfect hints, so a deployment can reach "enough" leakage faster or slower than a naive count implies.
 - **The result rests on the GAA** — the `O(h·log₂h)` law is empirical under the Gaussian Approximation Assumption; outside the regimes the paper validates, the estimate may not hold.
