@@ -747,10 +747,15 @@
         <details>
           <summary>Does this demo run the attack?</summary>
           <p>
-            <strong>No.</strong> It computes hint <em>counts</em> with plain
-            arithmetic (<code>C·h·log₂h</code> vs <code>n/2</code>). No lattice
-            reduction, no side channel, no randomness, no network. Same input ⇒
-            same output.
+            <strong>Not the paper's attack.</strong> The estimator computes hint
+            <em>counts</em> with plain arithmetic (<code>C·h·log₂h</code> vs
+            <code>n/2</code>): no lattice reduction, no side channel, no network,
+            and the same input gives the same output.
+            <a href="#attack">Run it</a>, further up, does perform a genuine
+            secret recovery on a real LWE instance from a seeded generator — but
+            with <em>perfect</em> hints at toy parameters, finishing in Gaussian
+            elimination rather than lattice reduction, so its hint count is its
+            own number.
           </p>
         </details>
       </section>
