@@ -1,28 +1,28 @@
 /**
- * gaa.ts — the Gaussian Approximation Assumption, measured instead of disclaimed.
+ * gaa.ts — a toy central-limit illustration for raw perfect-hint values.
  *
- * The paper's O(h·log h) law is empirical *under the GAA*: the working assumption
- * that the hint quantities behave like draws from a Gaussian. The page has always
- * carried that as a badge — "heuristic · GAA" — which tells a learner the claim is
- * conditional but never lets them see the condition.
+ * The paper's O(h·log h) law is empirical under a Gaussian Approximation
+ * Assumption (GAA) about score variables X_i = <A_i, c>, together with
+ * independence assumptions across coordinates and update steps. This module does
+ * NOT generate those score variables and therefore does not test the paper's GAA.
  *
- * The assumption is checkable here, because the quantity it is about is one this
- * page can generate. A perfect hint is l = <v, s>. With a sparse ternary s of
+ * It instead supplies a narrower piece of intuition. A perfect hint is
+ * l = <v, s>. With a sparse ternary s of
  * weight h and a probe v drawn uniformly from {−B, …, B}ⁿ, l is a sum of exactly
  * h independent symmetric terms ±v_i — a textbook CLT setup with an exactly
  * known target: mean 0 and variance h·σ² where σ² = B(B+1)/3 is the variance of
  * the uniform distribution on {−B, …, B}.
  *
- * So: draw hints, histogram them, and compare against the Gaussian the assumption
- * predicts. The comparison is a two-sided Kolmogorov–Smirnov statistic with a
+ * So: draw raw perfect-hint values, histogram them, and compare against the
+ * Gaussian predicted by that separate toy sum. The comparison is a two-sided
+ * Kolmogorov–Smirnov statistic with a
  * continuity correction (the sampled distribution is lattice-valued, so comparing
  * it raw against a continuous CDF would charge it for discreteness rather than
  * for non-Gaussianity), reported next to the α = 0.05 critical value.
  *
- * The honest result is not "the GAA is true". It is that the fit is excellent for
- * the h the paper works at and visibly poor for very small h — which is exactly
- * where a learner should be suspicious, and exactly what a disclaimer badge could
- * never have shown them.
+ * The honest result is only that this raw-hint sum looks increasingly Gaussian as
+ * h grows. It supplies CLT intuition; it is not evidence that the paper's score
+ * variables or independence assumptions hold.
  */
 
 import { mulberry32 } from './attack';
@@ -57,7 +57,7 @@ export interface GaaObservation {
   mean: number;
   /** Sample standard deviation. */
   sd: number;
-  /** The standard deviation the GAA predicts: sqrt(h · σ²). */
+  /** The standard deviation predicted for this toy raw-hint sum: sqrt(h · σ²). */
   predictedSd: number;
   /** Two-sided KS statistic against N(0, predictedSd²), continuity-corrected. */
   ks: number;
@@ -67,13 +67,13 @@ export interface GaaObservation {
   rejected: boolean;
   /** Histogram of the drawn values for plotting: bin centres and counts. */
   histogram: { center: number; count: number }[];
-  /** The Gaussian density the assumption predicts, on the histogram's bins. */
+  /** The Gaussian density predicted for this toy sum, on the histogram's bins. */
   expected: { center: number; density: number }[];
 }
 
 /**
  * Draw `samples` perfect hints l = <v, s> against a fixed sparse ternary secret
- * of weight h, and measure how Gaussian the result is.
+ * of weight h, and measure how Gaussian this separate toy sum is.
  *
  * Only the h nonzero coordinates contribute, so the dimension n never enters —
  * which is itself the point: the distribution of a hint depends on the Hamming

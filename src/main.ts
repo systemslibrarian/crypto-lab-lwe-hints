@@ -141,11 +141,12 @@ function renderCalc(): void {
   const res = effectiveScenario(n(), h, available);
   const box = el('calc-result');
 
-  // Prominent Safe / Manageable / Dangerous verdict — the card's headline.
+  // Proximity to the modeled hint budget. These are deliberately not security
+  // verdicts: being below a heuristic budget is not evidence that a system is safe.
   const VLABEL: Record<typeof res.verdict, string> = {
-    safe: 'Safe',
-    manageable: 'Manageable',
-    dangerous: 'Dangerous',
+    safe: 'Below model band',
+    manageable: 'Near model band',
+    dangerous: 'Budget met',
   };
   const VTEXT: Record<typeof res.verdict, string> = {
     safe: `well under the new-method hint budget for (n = 2^${nExp}, h = ${h}).`,
@@ -173,19 +174,21 @@ function renderCalc(): void {
     const opsToCross = rate > 0 ? Math.ceil(res.threshold / rate) : Infinity;
     box.innerHTML =
       `<strong>Hint budget met.</strong> ~${fmt(available)} hints leaked vs a ` +
-      `threshold of ~${fmt(res.threshold)} (${pct}%). Under this paper's law, the ` +
-      `secret would be <em>recoverable</em> after ~${fmt(opsToCross)} operations. ` +
+      `modeled threshold of ~${fmt(res.threshold)} (${pct}%), reached after about ` +
+      `${fmt(opsToCross)} operations at this illustrative rate. ` +
       `<span class="badge badge-heuristic">heuristic · GAA</span> ` +
-      `<span class="muted">(hint budget met — not a claim an attack was run.)</span>`;
+      `<span class="muted">(This proximity calculation does not establish that a ` +
+      `secret was recovered or that the paper's assumptions hold.)</span>`;
   } else {
     box.className = 'calc-result not-yet';
     const shortfall = res.threshold - available;
     const opsNeeded = rate > 0 ? Math.ceil(shortfall / rate) : Infinity;
     box.innerHTML =
-      `<strong>Not yet.</strong> ~${fmt(available)} hints leaked vs a threshold of ` +
+      `<strong>Budget not met.</strong> ~${fmt(available)} hints leaked vs a modeled threshold of ` +
       `~${fmt(res.threshold)} (${pct}%). Need ~${fmt(shortfall)} more — about ` +
       `${Number.isFinite(opsNeeded) ? fmt(opsNeeded) : '∞'} more operations at this ` +
-      `leak rate. <span class="badge badge-heuristic">heuristic · GAA</span>`;
+      `leak rate. Being below this heuristic budget is not a security guarantee. ` +
+      `<span class="badge badge-heuristic">heuristic · GAA</span>`;
   }
 }
 
@@ -555,8 +558,8 @@ function setupHintEquation(): void {
 
 // ---------------------------------------------------------------------------
 // Calculator scenario presets — ILLUSTRATIVE leak rates (not from the paper),
-// chosen to land in the Safe / Manageable / Dangerous bands against the (2^15,32)
-// anchor threshold of 320 hints.
+// chosen to land in the three proximity bands against the (2^15,32) anchor
+// threshold of 320 hints. The public labels are not security verdicts.
 // ---------------------------------------------------------------------------
 interface CalcScenario {
   label: string;
@@ -901,7 +904,9 @@ function runSweep(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Exhibit: the GAA, measured.
+// Exhibit: toy Gaussian intuition for raw perfect-hint sums.
+// This does not generate the paper's score variables X_i = <A_i, c> and therefore
+// is not a test of the paper's GAA.
 // ---------------------------------------------------------------------------
 const GAA_WEIGHTS = [1, 2, 8, 32, 64, 192];
 const GAA_SAMPLES = 4000;
@@ -991,17 +996,17 @@ function renderGaa(): void {
   box.innerHTML = obs.rejected
     ? `<strong>Gaussian fit REJECTED at h = ${obs.h}.</strong> D = ${obs.ks.toFixed(4)} exceeds ` +
       `the 5% critical value ${obs.ksCritical.toFixed(4)}. The sampled hints are not ` +
-      `distributed the way the assumption says they are.`
+      `well described by this toy sum's Gaussian approximation.`
     : `<strong>Gaussian fit not rejected at h = ${obs.h}.</strong> D = ${obs.ks.toFixed(4)} sits ` +
       `under the 5% critical value ${obs.ksCritical.toFixed(4)}, and the measured spread ` +
       `${obs.sd.toFixed(2)} lands within ` +
       `${Math.abs(100 * (obs.sd / obs.predictedSd - 1)).toFixed(1)}% of the ` +
-      `${obs.predictedSd.toFixed(2)} the assumption predicted from h alone.`;
+      `${obs.predictedSd.toFixed(2)} this toy sum predicts from h alone.`;
 
   el<HTMLCanvasElement>('gaa-chart').setAttribute(
     'aria-label',
     `Histogram of ${fmt(obs.samples)} sampled hint values at Hamming weight ${obs.h}, with the ` +
-      `Gaussian the assumption predicts drawn over it. Kolmogorov-Smirnov D is ` +
+      `Gaussian predicted for this toy sum drawn over it. Kolmogorov-Smirnov D is ` +
       `${obs.ks.toFixed(4)} against a 5% critical value of ${obs.ksCritical.toFixed(4)}: the fit is ` +
       `${obs.rejected ? 'rejected' : 'not rejected'}.`,
   );

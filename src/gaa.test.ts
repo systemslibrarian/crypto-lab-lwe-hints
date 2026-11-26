@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { normalCdf, observeGaa, probeVariance, PROBE_BOUND } from './gaa';
 
@@ -32,7 +34,15 @@ describe('probe variance', () => {
   });
 });
 
-describe('the Gaussian Approximation Assumption, measured', () => {
+describe('toy Gaussian illustration for raw perfect-hint sums', () => {
+  it('states that the toy sum does not test the paper score-variable GAA', () => {
+    const path = fileURLToPath(new URL('../index.html', import.meta.url));
+    const copy = readFileSync(path, 'utf8');
+    expect(copy).toContain('Xᵢ = ⟨Aᵢ, c⟩');
+    expect(copy).toContain("does\n          <strong>not</strong> test the paper's GAA");
+    expect(copy).toContain("does not validate either the paper's GAA");
+  });
+
   it('predicts the spread of hint values without being fitted to them', () => {
     const obs = observeGaa(32, 20000, 1234);
     // The predicted sd comes from h and the probe alphabet alone.
@@ -46,7 +56,7 @@ describe('the Gaussian Approximation Assumption, measured', () => {
   // A KS test at alpha = 0.05 rejects a PERFECTLY fitting distribution one run
   // in twenty, by construction. So "this particular seed passed" is not the
   // claim worth pinning; the rejection RATE across many seeds is. These tests
-  // assert the rate, which is what "the assumption holds here" actually means.
+  // assert the rate for this toy distribution. It is not a test of the paper's GAA.
   // Both statistics use the exact same deterministic seeds and observations.
   // Computing them twice adds no independent evidence and exceeded the runner's
   // per-case 5s budget. Keep all 40 seeds and 4,000 samples per observation.
@@ -77,8 +87,7 @@ describe('the Gaussian Approximation Assumption, measured', () => {
 
   it('IS rejected at h = 1, on every seed', () => {
     // h = 1 makes the hint value uniform on {-B..B}: flat, not bell-shaped. This
-    // is the assumption failing, and it fails in the sparse direction — the same
-    // direction FHE parameter choices push.
+    // is this toy normal approximation failing at very low weight.
     expect(rejectionRate(1)).toBe(1);
     expect(medianKs(1)).toBeGreaterThan(2 * (1.36 / Math.sqrt(4000)));
   });

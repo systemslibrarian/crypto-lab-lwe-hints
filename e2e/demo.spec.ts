@@ -111,7 +111,7 @@ test.describe('the attack, actually run', () => {
   });
 });
 
-test.describe('the GAA, measured', () => {
+test.describe('toy Gaussian illustration', () => {
   test('is not rejected at the Hamming weight the paper anchors on', async ({ page }) => {
     await gotoLab(page);
 
@@ -136,7 +136,7 @@ test.describe('the GAA, measured', () => {
     expect(Math.abs(measured / predicted - 1)).toBeLessThan(0.05);
   });
 
-  test('IS rejected at h = 1, where the assumption genuinely fails', async ({ page }) => {
+  test('is rejected at h = 1, where the toy normal approximation fails', async ({ page }) => {
     await gotoLab(page);
     await page.locator('[data-gaa-h="1"]').click();
     await expect(page.locator('[data-gaa-h="1"]')).toHaveAttribute('aria-pressed', 'true');

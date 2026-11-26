@@ -439,7 +439,7 @@ figcaption { margin-top: 0.5rem; font-size: 0.85rem; }
 .scenario-btn:hover { border-color: var(--accent); }
 .scenario-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* Safe / Manageable / Dangerous verdict chip */
+/* Proximity-to-model-budget chip (legacy class names are styling hooks only). */
 .calc-verdict {
   display: flex;
   align-items: baseline;

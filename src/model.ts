@@ -135,7 +135,8 @@ export type Verdict = 'safe' | 'manageable' | 'dangerous';
 export const MANAGEABLE_FRACTION = 0.5;
 
 /**
- * Map a fraction-of-threshold to a coarse Safe / Manageable / Dangerous band.
+ * Map a fraction-of-threshold to an internal proximity band. The public labels are
+ * neutral because a heuristic hint budget cannot establish safety or danger.
  * Pure and total over fraction >= 0; throws on negative or non-finite input.
  */
 export function riskVerdict(fractionOfThreshold: number): Verdict {
@@ -155,7 +156,7 @@ export interface ScenarioResult {
   available: number;
   /** Does available cross the new-method threshold? */
   status: Recoverability;
-  /** Coarse Safe / Manageable / Dangerous band derived from fractionOfThreshold. */
+  /** Internal proximity band derived from fractionOfThreshold. */
   verdict: Verdict;
   /** available - threshold (negative = shortfall). */
   margin: number;

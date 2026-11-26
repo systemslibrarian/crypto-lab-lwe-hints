@@ -16,7 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Educational estimator: how many side-channel hints recover a sparse-ternary LWE secret, under the O(h log h) law of ePrint 2026/1081 — plus a toy-parameter instance where the recovery is actually carried out, and a measurement of the Gaussian assumption behind the law."
+      content="Educational estimator: how many side-channel hints recover a sparse-ternary LWE secret, under the O(h log h) law of ePrint 2026/1081 — plus a toy-parameter recovery and a separate central-limit illustration whose boundary is stated explicitly."
     />
     <title>LWE Hints — How Cheaply Do Sparse Secrets Leak?</title>
     <link rel="stylesheet" href="/src/styles.css" />
@@ -191,7 +191,7 @@
         <ul class="tldr-points">
           <li><strong>Who's exposed:</strong> sparse-secret FHE / bootstrapping deployments with a side-channel leakage path.</li>
           <li><strong>Safer pattern:</strong> raise the Hamming weight h, mask / rate-limit leakage, and treat hint-availability as part of the threat model.</li>
-          <li><strong>What this is:</strong> an estimator of <em>hint counts</em> at the paper's parameters — no lattice reduction there — plus <a href="#attack">one toy-parameter instance where the recovery is actually run</a>, and <a href="#gaa">a measurement of the Gaussian assumption</a> the estimate rests on.</li>
+          <li><strong>What this is:</strong> an estimator of <em>hint counts</em> at the paper's parameters — no lattice reduction there — plus <a href="#attack">one toy-parameter instance where the recovery is actually run</a>, and <a href="#gaa">a separate central-limit illustration</a> for raw perfect-hint values.</li>
         </ul>
         <p class="tldr-cite muted">
           Visualizing one result of Hhan et al., <em>“From Perfect to Approximate
@@ -522,28 +522,32 @@
         </div>
       </section>
 
-      <!-- 4a-ter. The Gaussian Approximation Assumption, measured rather than badged. -->
+      <!-- 4a-ter. Toy CLT intuition; explicitly not a test of the paper's GAA. -->
       <section class="card" id="gaa">
-        <h2>The GAA, measured</h2>
+        <h2>Gaussian intuition: a toy raw-hint sum</h2>
         <p>
           Every modeled number on this page carries a
           <span class="badge badge-heuristic">heuristic · GAA</span> badge, because the
           paper's law is empirical under the <strong>Gaussian Approximation
-          Assumption</strong>. A badge tells you a claim is conditional; it never lets
-          you see the condition. This does.
+          Assumption</strong>. In the paper, that assumption models score variables
+          <code>Xᵢ = ⟨Aᵢ, c⟩</code> with calculated means and variances, and also assumes
+          independence across coordinates and successive update steps. This page does
+          not reproduce those score variables, so the experiment below does
+          <strong>not</strong> test the paper's GAA.
         </p>
         <p class="muted">
-          A perfect hint is <code>l = ⟨v, s⟩</code>. With a sparse ternary secret of
+          It demonstrates a narrower central-limit idea. A perfect hint is
+          <code>l = ⟨v, s⟩</code>. With a sparse ternary secret of
           weight <code>h</code> and a probe drawn uniformly from
           <code>{−8, …, 8}ⁿ</code>, <code>l</code> is a sum of exactly <code>h</code>
-          independent symmetric terms — so the assumption makes a falsifiable prediction:
+          independent symmetric terms — so this toy sum has a falsifiable prediction:
           mean 0 and standard deviation <code>√(h · σ²)</code> with
           <code>σ² = 24</code>. The page draws 4,000 hints and compares them against
           <em>that</em> Gaussian — not against one refitted to the sample, which would
           quietly hand the assumption its own parameters.
         </p>
 
-        <div class="calc-scenarios" id="gaa-weights" role="group" aria-label="Hamming weight for the GAA check">
+        <div class="calc-scenarios" id="gaa-weights" role="group" aria-label="Hamming weight for the toy Gaussian check">
           <!-- weight buttons injected by main.ts -->
         </div>
         <label class="calc-row calc-row--inline">
@@ -553,10 +557,10 @@
 
         <figure class="chart-wrap">
           <canvas id="gaa-chart" width="900" height="360" role="img"
-            aria-label="Histogram of sampled hint values with the Gaussian curve the assumption predicts drawn over it."></canvas>
+            aria-label="Histogram of sampled raw perfect-hint values with the toy Gaussian curve drawn over it."></canvas>
           <figcaption class="muted">
-            Bars: 4,000 sampled hint values. Curve: the Gaussian the GAA predicts from
-            <code>h</code> alone.
+            Bars: 4,000 sampled raw perfect-hint values. Curve: the Gaussian predicted
+            for this separate toy sum from <code>h</code> alone.
           </figcaption>
         </figure>
 
@@ -571,9 +575,9 @@
           A KS test at α = 0.05 rejects a perfectly Gaussian sample one run in twenty, so
           a single rejection at large <code>h</code> is noise — change the seed and watch.
           What is <em>not</em> noise is <code>h = 1</code> and <code>h = 2</code>, which
-          are rejected on every seed by a wide margin. The assumption is a
-          central-limit-theorem claim, and it gets weaker exactly where the secret gets
-          sparser — which is the direction FHE parameter choices push.
+          are rejected on every seed by a wide margin. That shows when this particular
+          central-limit approximation becomes poor; it says nothing by itself about the
+          paper's score-variable GAA or its independence assumptions.
         </p>
       </section>
 
@@ -608,8 +612,8 @@
         <p class="muted">
           Each captured trace yields one or more hints — often <em>approximate</em>
           (noisy) ones. The calculator below turns a per-operation leak rate into an
-          accumulated hint count and a Safe / Manageable / Dangerous verdict for the
-          selected <code>(n, h)</code>.
+          accumulated hint count and its proximity to the modeled budget for the
+          selected <code>(n, h)</code>. It does not issue a security verdict.
         </p>
       </section>
 
@@ -647,10 +651,11 @@
           on your hardware and countermeasures (see <a href="#origins">Where hints
           come from</a>). It is the knob a defender actually controls: masking, shuffling,
           and rate-limiting all push it toward zero. The scenario buttons above set it to
-          plausible values so the verdict tracks a real deployment, not an arbitrary number.
+          illustrative values so the arithmetic has concrete anchors. They are not
+          measurements of a real deployment.
         </p>
 
-        <!-- Prominent Safe / Manageable / Dangerous verdict (the headline of this card) -->
+        <!-- Proximity to the modeled budget; intentionally not a security verdict. -->
         <div class="calc-verdict" id="calc-verdict" aria-live="polite"></div>
 
         <div class="calc-bar" role="img" aria-label="Hints accumulated versus the new-method threshold">
@@ -813,16 +818,15 @@
             but is not claimed to extrapolate arbitrarily beyond those regimes.
           </li>
           <li>
-            <strong>The GAA is an assumption</strong> — and now a measured one. The
+            <strong>The GAA remains an assumption.</strong> The
             O(h log h) law is empirical / heuristic under the Gaussian Approximation
             Assumption: a conservative lower-bound analysis, not a worst-case proof.
-            <a href="#gaa">The GAA, measured</a> above checks the assumption's own
-            prediction against sampled hints and reports the Kolmogorov–Smirnov
-            statistic. It is not rejected at the weights the paper works at, and it
-            <em>is</em> decisively rejected at h = 1 and h = 2 — so the assumption is
-            weakest exactly where FHE parameter choices push. Measuring the
-            distribution of hint values is not the same as validating the paper's
-            estimator, which depends on more than that one distribution.
+            The paper models score variables <code>Xᵢ = ⟨Aᵢ, c⟩</code> and assumes
+            independence across coordinates and update steps. The
+            <a href="#gaa">toy Gaussian illustration</a> above instead samples raw
+            perfect-hint values <code>⟨v, s⟩</code>. Its Kolmogorov–Smirnov result is
+            useful CLT intuition, but it does not validate either the paper's GAA or
+            the estimator built on it.
           </li>
           <li>
             <strong>The attack that runs here is not the paper's.</strong>

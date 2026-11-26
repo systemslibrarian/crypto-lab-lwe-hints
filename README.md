@@ -84,16 +84,18 @@ The page is a guided path from "what is even leaking?" to "why is the cost
    LWE samples — alongside a control secret that does not. A sweep over
    `h = 2 … 32` puts the measured cost next to the flat `n/2` baseline. Toy
    parameters, said so on the page.
-7. **The GAA, measured** — the `heuristic · GAA` badge, turned into an observation.
+7. **Gaussian intuition: a toy raw-hint sum** — a separate central-limit illustration,
+   explicitly not a test of the paper's GAA. The paper's assumption concerns score
+   variables `X_i = ⟨A_i,c⟩` and independence across coordinates and update steps.
    A perfect hint against a weight-`h` sparse secret is a sum of `h` independent
-   symmetric terms, so the assumption predicts mean 0 and spread `√(h·24)` from `h`
+   symmetric terms, so this toy sum predicts mean 0 and spread `√(h·24)` from `h`
    alone. The page samples 4,000 hints, histograms them against *that* Gaussian (not
    one refitted to the sample), and reports a continuity-corrected Kolmogorov–Smirnov
    statistic against its 5% critical value. Not rejected at `h = 32, 64, 128, 192`;
-   decisively rejected at `h = 1` and `h = 2` — the assumption is weakest exactly
-   where FHE parameter choices push.
+   decisively rejected at `h = 1` and `h = 2`. That tests only the raw-hint toy
+   distribution; it does not validate the paper's score model or estimator.
 8. **Where hints come from** + **threat-scenario calculator** — real leakage
-   channels (DPA / cache / EM) and a Safe / Manageable / Dangerous verdict, with
+   channels (DPA / cache / EM) and neutral proximity-to-budget labels, with
    the leak-rate knob annotated with realistic anchors. Below it, **paste your own
    leakage profile**: one number per period, newline- or comma-separated, with
    `label:` prefixes and `#` comments, and the page finds the period at which the
@@ -156,8 +158,8 @@ npm run dev
 Requires Node 20+. No runtime dependencies. Additional scripts:
 
 ```bash
-npm test          # vitest: paper-anchor invariants, the real recovery, the GAA
-                  #         measurement, and the leakage-profile parser
+npm test          # vitest: paper-anchor invariants, the real recovery, the toy
+                  #         Gaussian illustration, and the leakage-profile parser
 npm run build     # tsc --noEmit + production build into dist/
 npm run preview   # preview the production build
 npm run test:a11y # Playwright: axe WCAG A/AA gate in both themes, plus
@@ -167,8 +169,8 @@ npm run test:a11y # Playwright: axe WCAG A/AA gate in both themes, plus
 `e2e/demo.spec.ts` asserts the computed outcome and the failure path of each live
 exhibit: the recovery matches the planted secret and explains the LWE samples while a
 control secret does not, the hint accounting adds up and beats `n/2`, the sweep is
-monotone in `h` while the baseline is flat, the KS statistic agrees with its own
-verdict and rejects `h = 1`, and the profile parser reports unreadable lines instead
+monotone in `h` while the baseline is flat, the toy-sum KS statistic agrees with its
+own verdict and rejects `h = 1`, and the profile parser reports unreadable lines instead
 of counting them as zero.
 
 ## Related Demos

@@ -58,11 +58,17 @@ build` both pass; `dist/` emits with base `/crypto-lab-lwe-hints/`.
    header, `index.html`) credited "May et al." — wrong. The committed PDF and the
    `PAPER-NOTES.md`/`BUILD-NOTES.md` transcriptions agree the authors are **Hhan,
    Hong, Kim, Lee, Lee**. All public references now match.
-5. **Threat calculator hardened (review follow-up).** It now emits a prominent
-   **Safe / Manageable / Dangerous** verdict (`riskVerdict()` in `model.ts`,
-   banded at 0.5× and 1.0× of the budget, pinned by tests) and ships three
-   *illustrative* leak-rate scenarios (kept in `main.ts`, NOT paper numbers).
-6. **"What one hint is" visual.** The mechanism section now shows a fixed, worked
+5. **Threat calculator hardened (review follow-up).** It reports neutral
+   **Below model band / Near model band / Budget met** proximity labels
+   (`riskVerdict()` in `model.ts`, banded at 0.5× and 1.0× of the budget, pinned
+   by tests) and ships three *illustrative* leak-rate scenarios (kept in
+   `main.ts`, NOT paper numbers). The labels are not security verdicts.
+6. **Toy Gaussian exhibit bounded correctly (student-accuracy review).** The
+   raw perfect-hint sum `⟨v,s⟩` supplies central-limit intuition but does not test
+   the paper's GAA, which concerns score variables `X_i = ⟨A_i,c⟩` and additional
+   independence assumptions. The page, README, source comments and tests now say
+   that explicitly.
+7. **"What one hint is" visual.** The mechanism section now shows a fixed, worked
    `l = ⟨v, s⟩` example with a Perfect/Approximate toggle, making the
    linear-equation intuition and the perfect-vs-approximate distinction concrete.
    The example is hardcoded and deterministic (no randomness).

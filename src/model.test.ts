@@ -174,7 +174,7 @@ describe('effectiveScenario crosses the new-method threshold', () => {
   });
 });
 
-describe('riskVerdict bands (Safe / Manageable / Dangerous)', () => {
+describe('riskVerdict proximity bands', () => {
   it('is safe well below the threshold', () => {
     expect(riskVerdict(0)).toBe('safe');
     expect(riskVerdict(0.25)).toBe('safe');
